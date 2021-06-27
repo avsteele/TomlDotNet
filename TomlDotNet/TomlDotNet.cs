@@ -8,12 +8,15 @@ namespace TomlDotNet
 {
     public enum TomlData { Table, Array, Comment, String, Integer, Float, DateTime }
 
-    public delegate object Converter(TomlValue value, Type targetType);
+    //public delegate object Converter(TomlValue value, Type targetType);
 
-    public delegate T ValueTypeConverter<T, U>(U from) where T : struct where U : struct;
+    //public delegate T ValueTypeConverter<T, U>(U from) where T : struct where U : struct;
+
 
     public static class Toml
     {
+        public static Dictionary<(Type from, Type to), Func<object, object>> Conversions { get; private set; } = new();
+
         public static T GetFromFile<T>(string filePath) where T : class, new()
         => GetFromFile<T>(System.IO.File.ReadAllText(filePath));
 
@@ -37,7 +40,7 @@ namespace TomlDotNet
             {
                 params_[i] = GetObj(tt, v.ParameterType, v.Name);
             }
-            return Convert.ChangeType( constructor.Invoke(params_), type);
+            return Convert.ChangeType(constructor.Invoke(params_), type);
         }
 
         private static object GetObj(TomlTable tt, Type type, string? key)
@@ -49,10 +52,28 @@ namespace TomlDotNet
         private static object ConvertObj(TomlValue value, Type type)
             => value switch
             {
-                TomlString s => ConvertBaseObj(s),
-                TomlLong i => ConvertBaseObj(i),
-                TomlBoolean b => ConvertBaseObj(b),
-                TomlDouble d => ConvertBaseObj(d),
+                TomlString s => type switch 
+                    {
+                        Type t when t == typeof(string) => ConvertBaseObj(s),
+                        _ => throw new NotImplementedException(),
+                    },
+                TomlLong i => type switch
+                    {
+                        Type t when t == typeof(long) => ConvertBaseObj(i),
+                        // look for converter
+                        //Type t when t == typeof(int) => Convert.ToInt32(i.Value),
+                        _ => Conversions.ContainsKey((from: typeof(long), to: type))
+                        ? Conversions[(from: typeof(long), to: type)](i.Value)
+                        : throw new InvalidCastException($"long->{type}"),
+                    },
+                TomlBoolean b => ConvertBaseObj(b),                
+                TomlDouble d => type switch
+                {
+                    Type t when t==typeof(double) => ConvertBaseObj(d),
+                    _ => Conversions.ContainsKey((from: typeof(double), to: type))
+                    ? Conversions[(from: typeof(double), to: type)](d.Value)
+                    : throw new InvalidCastException($"double->{type}"),
+                },
                 TomlArray a => ConvertBaseObj(a),
                 TomlTable t => Get(t, type),
                 null => throw new ArgumentNullException(nameof(value)),
@@ -67,7 +88,7 @@ namespace TomlDotNet
                 TomlBoolean b => b.Value,
                 TomlDouble d => d.Value,
                 TomlArray a => ConvertArray(a),
-                _ => throw new InvalidOperationException("Only TomlString, long ,bool, double *or* objects iwth user-defined TOML->CLR converters allowed")
+                _ => throw new InvalidOperationException("Only TomlString, long ,bool, double, or array (of obj) allowed")
             };
 
         public static List<object> ConvertArray(TomlArray a)

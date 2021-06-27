@@ -2,6 +2,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Text.Json;
 using System;
 using System.Collections.Generic;
+using System.Collections;
 
 using Tomlet;
 using TomlDotNet;
@@ -27,10 +28,12 @@ namespace TomlDotNet.Tests
         [TestMethod]
         public void Array()
         {
-            var a = new Tomlet.Models.TomlArray();
-            a.Add(5);
-            a.Add(false);
-            a.Add(5.55);
+            var a = new Tomlet.Models.TomlArray
+            {
+                5,
+                false,
+                5.55
+            };
             // TODO: can't do a string because .Add doesn't allow it??! pretty sure TOML allows arrays of string s though...
             var tt = new Tomlet.Models.TomlTable();
             tt.PutValue("A", a);
@@ -50,12 +53,22 @@ namespace TomlDotNet.Tests
         [TestMethod]
         public void Converters()
         {
-            int i = 5;
-            long l = int.MaxValue + 1L;
+            var cIn = new Conv(5, 6, 7, 8.8, 9.9F);
 
-            //var i2 = Convert.ToInt32(l);
-            var d = Convert.ToDouble(long.MaxValue);
-            Console.WriteLine(d);
+            Tomlet.Models.TomlTable tt = new();
+            tt.Put("I", cIn.I); // inserted into table as TomlLong -> needs conversion to int
+            tt.Put("UI", cIn.UI); // inserted into table as TomlLong -> needs conversion to uint
+            tt.Put("UL", cIn.UL); // inserted into table as TomlLong -> needs conversion to ulong
+            tt.Put("D", cIn.D); // inserted into table as TomlDouble -> NO CONVERSION
+            tt.Put("F", cIn.F); // inserted into table as TomlDouble -> needs convresion to float 
+
+            Toml.Conversions.Add((typeof(long), typeof(int)), (i) => Toml.ToInt((long)i));
+            Toml.Conversions.Add((typeof(long), typeof(uint)), (i) => Toml.ToUInt((long)i));
+            Toml.Conversions.Add((typeof(long), typeof(ulong)), (i) => Toml.ToULong((long)i));
+            Toml.Conversions.Add((typeof(long), typeof(double)), (i) => Convert.ToDouble((long)i));
+            Toml.Conversions.Add((typeof(double), typeof(float)), (d) => Convert.ToSingle((double)d));
+            var cOut = Toml.Get<Conv>(tt); // attempt extaction of ints with conversions
+            Assert.IsTrue(cIn == cOut);
         }
 
         [TestMethod]
@@ -77,4 +90,6 @@ namespace TomlDotNet.Tests
     public record Inner(long L);
 
     public record ArrayHolder(List<object> A);
+
+    public record Conv(int I, uint UI, ulong UL, double D, float F);
 }
