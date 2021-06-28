@@ -83,7 +83,14 @@ namespace TomlDotNet.Tests
             tt.Put("DTUtc", dtIn.DTUtc); //serializded withut offset time
             tt.Put("Dto", dtIn.Dto); // serialized with offsettime
 
+
+            // now write t file and back to see if same
+            var filename = @"dateTime.toml";
             System.IO.File.WriteAllText(@"dateTime.toml", tt.SerializedValue);
+            
+            var dtIn2 = TomlDotNet.Toml.GetFromFile<DatesTimes>(filename);
+
+            Assert.IsTrue(dtIn == dtIn2);
         }
 
         [TestMethod]

@@ -22,10 +22,10 @@ namespace TomlDotNet
     {
         public static Dictionary<(Type from, Type to), Func<object, object>> Conversions { get; private set; } = new();
 
-        public static T GetFromFile<T>(string filePath) where T : class, new()
-        => GetFromFile<T>(System.IO.File.ReadAllText(filePath));
+        public static T GetFromFile<T>(string filePath) where T : class
+            => GetFromString<T>(System.IO.File.ReadAllText(filePath));
 
-        public static T GetFromString<T>(string tomlFileContents) where T : class, new()
+        public static T GetFromString<T>(string tomlFileContents) where T : class
         {
             var parser = new Tomlet.TomlParser();
             return Get<T>(parser.Parse(tomlFileContents));
