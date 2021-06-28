@@ -7,7 +7,6 @@ using System.Collections.Generic;
 
 namespace TomlDotNet
 {
-    public enum TomlData { Table, Array, Comment, String, Integer, Float, DateTime }
 
     //public delegate object Converter(TomlValue value, Type targetType);
     //public delegate T ValueTypeConverter<T, U>(U from) where T : struct where U : struct;
@@ -22,36 +21,46 @@ namespace TomlDotNet
     {
         public static Dictionary<(Type from, Type to), Func<object, object>> Conversions { get; private set; } = new();
 
-        public static T GetFromFile<T>(string filePath) where T : class
-            => GetFromString<T>(System.IO.File.ReadAllText(filePath));
+        public static T GetFromFile<T>(string filePath, bool allowNullFillIfMissing = false) where T : class
+            => GetFromString<T>(System.IO.File.ReadAllText(filePath), allowNullFillIfMissing);
 
-        public static T GetFromString<T>(string tomlFileContents) where T : class
+        public static T GetFromString<T>(string tomlFileContents, bool allowNullFillIfMissing = false) where T : class
         {
             var parser = new Tomlet.TomlParser();
-            return Get<T>(parser.Parse(tomlFileContents));
+            return Get<T>(parser.Parse(tomlFileContents), allowNullFillIfMissing);
         }
 
-        public static T Get<T>(TomlTable tt) where T : class
-            => (T)Get(tt, typeof(T));
+        public static T Get<T>(TomlTable tt, bool allowNullFillIfMissing = false) where T : class
+            => (T)Get(tt, typeof(T), allowNullFillIfMissing);
 
-        private static object Get(TomlTable tt, Type type)
+        private static object Get(TomlTable tt, Type type, bool allowNullFillIfMissing = false)
         {
             // TODO: assuming just one for now
             var constructor = type.GetConstructors(BindingFlags.Public | BindingFlags.Instance)[0];
             var param_list = constructor.GetParameters();
 
-            var params_ = new object[param_list.Length];
+            var params_ = new object?[param_list.Length];
             foreach (var (v, i) in param_list.Select((v, i) => (v, i)))
             {
-                params_[i] = GetObj(tt, v.ParameterType, v.Name);
+                params_[i] = GetObj(tt, v, allowNullFillIfMissing);
             }
             return Convert.ChangeType(constructor.Invoke(params_), type);
         }
 
-        private static object GetObj(TomlTable tt, Type type, string? key)
+        private static object? GetObj(TomlTable tt, ParameterInfo p, bool allowNullFillIfMissing = false)
         {
-            var value = tt.GetValue(key ?? throw new ArgumentNullException(nameof(key)));
-            return ConvertObj(value, type);
+            if(tt.ContainsKey(p.Name ?? throw new ArgumentException(nameof(p), $"{nameof(p)}.name must not be null")))
+            {
+                var value = tt.GetValue(p.Name);
+                return ConvertObj(value, p.ParameterType);
+            }
+            else
+            {
+                if (!allowNullFillIfMissing)
+                    throw new InvalidOperationException($"No value for key {p.Name} found in Toml data, and null not allowed by user options");
+                if (NullCompatability.IsNullable(p)) return null;
+                throw new InvalidOperationException($"No value for key {p.Name} found in Toml data, and null not allowed by type");
+            }
         }
 
         private static object ConvertObj(TomlValue value, Type type)
@@ -104,13 +113,5 @@ namespace TomlDotNet
         public static List<object> ConvertArray(TomlArray a)
             => new(a.AsEnumerable().Select((v,_)=>ConvertBaseObj(v)));
 
-
-        #region Built-in Converters
-
-        public static int ToInt(long l) => Convert.ToInt32(l);
-        public static uint ToUInt(long l) => Convert.ToUInt32(l);
-        public static double ToDouble(long l) => Convert.ToDouble(l);
-        public static ulong ToULong(long l) => Convert.ToUInt64(l);
-        #endregion
     }
 }

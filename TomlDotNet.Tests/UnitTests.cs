@@ -131,6 +131,27 @@ namespace TomlDotNet.Tests
             var dOut = Toml.Get<Nested>(tt);
             Assert.IsTrue(dOut.I.L == data.I.L);
         }
+
+        [TestMethod]
+        public void NullValues()
+        {
+            Tomlet.Models.TomlTable tt = new();
+
+            try
+            {
+                NullTypes nte = Toml.Get<NullTypes>(tt);
+                throw new Exception("Should have thrown on missing data because flag to allow null not set");
+            }
+            catch (InvalidOperationException) { }
+            try
+            {
+                NoNullTypes nte = Toml.Get<NoNullTypes>(tt, true);
+                throw new Exception("Should have thrown on missing data because, even though flag to allow null is set, typ eis not compaitble with it");
+            }
+            catch (InvalidOperationException) { }
+            NullTypes nt = Toml.Get<NullTypes>(tt, true);
+            Assert.IsTrue(nt.In is null && nt.Sn is null);
+        }
     }
 
     public record Data(long L, double D, string S, bool B);
@@ -142,4 +163,7 @@ namespace TomlDotNet.Tests
     public record Conv(long L, int I, uint UI, ulong UL, double LtoD, float LtoF, double D, float F);
 
     public record DatesTimes( DateTime DT, DateTime DTUtc, DateTimeOffset Dto);
+
+    public record NullTypes(int? In, string? Sn);
+    public record NoNullTypes(string Sn);
 }
