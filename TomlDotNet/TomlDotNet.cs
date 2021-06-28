@@ -21,19 +21,19 @@ namespace TomlDotNet
     {
         public static Dictionary<(Type from, Type to), Func<object, object>> Conversions { get; private set; } = new();
 
-        public static T GetFromFile<T>(string filePath, bool allowNullFillIfMissing = false) where T : class
-            => GetFromString<T>(System.IO.File.ReadAllText(filePath), allowNullFillIfMissing);
+        public static T FromFile<T>(string filePath, bool allowNullFillIfMissing = false) where T : class
+            => FromString<T>(System.IO.File.ReadAllText(filePath), allowNullFillIfMissing);
 
-        public static T GetFromString<T>(string tomlFileContents, bool allowNullFillIfMissing = false) where T : class
+        public static T FromString<T>(string tomlFileContents, bool allowNullFillIfMissing = false) where T : class
         {
             var parser = new Tomlet.TomlParser();
-            return Get<T>(parser.Parse(tomlFileContents), allowNullFillIfMissing);
+            return FromToml<T>(parser.Parse(tomlFileContents), allowNullFillIfMissing);
         }
 
-        public static T Get<T>(TomlTable tt, bool allowNullFillIfMissing = false) where T : class
-            => (T)Get(tt, typeof(T), allowNullFillIfMissing);
+        public static T FromToml<T>(TomlTable tt, bool allowNullFillIfMissing = false) where T : class
+            => (T)FromToml(tt, typeof(T), allowNullFillIfMissing);
 
-        private static object Get(TomlTable tt, Type type, bool allowNullFillIfMissing)
+        private static object FromToml(TomlTable tt, Type type, bool allowNullFillIfMissing)
         {
             // TODO: assuming just one for now
             var constructor = type.GetConstructors(BindingFlags.Public | BindingFlags.Instance)[0];
@@ -91,7 +91,7 @@ namespace TomlDotNet
                 TomlArray a => ConvertBaseObj(a),
                 TomlLocalDateTime ldt => ConvertBaseObj(ldt),
                 TomlOffsetDateTime odt => ConvertBaseObj(odt),
-                TomlTable t => Get(t, type, allowNullFillIfMissing),
+                TomlTable t => FromToml(t, type, allowNullFillIfMissing),
                 null => throw new ArgumentNullException(nameof(value)),
                 _ => throw new NotImplementedException(type.ToString()),
             };
@@ -114,16 +114,15 @@ namespace TomlDotNet
             => new(a.AsEnumerable().Select((v,_)=>ConvertBaseObj(v)));
 
 
-        public static string ToToml<T>(T data)
+        public static string ToTomlString<T>(T data)
         {
             var table = ToToml(data, typeof(T));
-
-            //var doc = Tomlet.Models.TomlDocument.CreateEmpty();
             return table.SerializeNonInlineTable(null, false);
         }
 
         /// <summary>
-        /// 
+        /// Converts a CLR object into a Tomlet TomlTable.   It looks for a constructor uses this to constrct the object.  
+        /// This is the inverse of the 
         /// </summary>
         /// <param name="data"></param>
         /// <param name="t"></param>
@@ -160,7 +159,14 @@ namespace TomlDotNet
         public static bool IsBasicTomlType(Type t)
         {
             // TODO incorporate use of converters
-            var baseTypes = new List<Type>() { typeof(long), typeof(string), typeof(bool), typeof(double), typeof(DateTime), typeof(DateTimeOffset)};
+            var baseTypes = new List<Type>() 
+            { 
+                typeof(long), typeof(int), typeof(uint), typeof(short), typeof(ushort), typeof(byte),// never error conversions
+                typeof(string), 
+                typeof(bool), 
+                typeof(double), typeof(float),
+                typeof(DateTime), 
+                typeof(DateTimeOffset)};
             return (from b in baseTypes where t.Equals(b) select b).Any();
         }
 
@@ -169,13 +175,18 @@ namespace TomlDotNet
             {
                 bool b => Tomlet.Models.TomlBoolean.ValueOf(b), // no idea why this is differnt from other in the library
                 double d => new Tomlet.Models.TomlDouble(d),
+                float f => new Tomlet.Models.TomlDouble(f),
                 DateTime dt => new Tomlet.Models.TomlLocalDateTime(dt),
                 DateTimeOffset dto => new Tomlet.Models.TomlOffsetDateTime(dto),
                 long l => new Tomlet.Models.TomlLong(l),
+                int i => new Tomlet.Models.TomlLong(i),
+                uint ui => new Tomlet.Models.TomlLong(ui),
+                short s => new Tomlet.Models.TomlLong(s),
+                ushort us => new Tomlet.Models.TomlLong(us),
+                byte b => new Tomlet.Models.TomlLong(b),
                 string s => new Tomlet.Models.TomlString(s),
                 _ => throw new InvalidOperationException($"To known conversion from {data.GetType()} to Toml")
             };
-
 
         public static object? GetPropValue(object src, string propName)
         {

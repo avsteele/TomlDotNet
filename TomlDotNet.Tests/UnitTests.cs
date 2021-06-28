@@ -21,7 +21,7 @@ namespace TomlDotNet.Tests
             tt.Put("D", data.D);
             tt.Put("S", data.S);
             tt.Put("B", data.B);
-            var dout = Toml.Get<Data>(tt);
+            var dout = Toml.FromToml<Data>(tt);
             Assert.IsTrue(data == dout);
         }
 
@@ -64,7 +64,7 @@ namespace TomlDotNet.Tests
             tt.Put("DTUtc", dtIn.DTUtc);
             tt.Put("Dto", dtIn.Dto);
 
-            var dtOut = Toml.Get<DatesTimes>(tt);
+            var dtOut = Toml.FromToml<DatesTimes>(tt);
 
             Assert.IsTrue(dtIn == dtOut);
         }
@@ -88,7 +88,7 @@ namespace TomlDotNet.Tests
             var filename = @"dateTimeFile.toml";
             System.IO.File.WriteAllText(filename, tt.SerializedValue);
             
-            var dtIn2 = TomlDotNet.Toml.GetFromFile<DatesTimes>(filename);
+            var dtIn2 = TomlDotNet.Toml.FromFile<DatesTimes>(filename);
 
             Assert.IsTrue(dtIn == dtIn2);
         }
@@ -115,7 +115,7 @@ namespace TomlDotNet.Tests
             Toml.Conversions.Add((typeof(long), typeof(double)), (i) => Convert.ToDouble((long)i));
             Toml.Conversions.Add((typeof(double), typeof(float)), (d) => Convert.ToSingle((double)d));
 
-            var cOut = Toml.Get<Conv>(tt); // attempt extaction full clas data, requires conversions
+            var cOut = Toml.FromToml<Conv>(tt); // attempt extaction full clas data, requires conversions
             Assert.IsTrue(cIn == cOut);
         }
 
@@ -128,7 +128,7 @@ namespace TomlDotNet.Tests
             var tt = new Tomlet.Models.TomlTable();
             // using 'Put' instead of putvalue here does something odd
             tt.PutValue("I", I);
-            var dOut = Toml.Get<Nested>(tt);
+            var dOut = Toml.FromToml<Nested>(tt);
             Assert.IsTrue(dOut.I.L == data.I.L);
         }
 
@@ -139,17 +139,17 @@ namespace TomlDotNet.Tests
 
             try
             {
-                NullTypes nte = Toml.Get<NullTypes>(tt);
+                NullTypes nte = Toml.FromToml<NullTypes>(tt);
                 throw new Exception("Should have thrown on missing data because flag to allow null not set");
             }
             catch (InvalidOperationException) { }
             try
             {
-                NoNullTypes nte = Toml.Get<NoNullTypes>(tt, true);
+                NoNullTypes nte = Toml.FromToml<NoNullTypes>(tt, true);
                 throw new Exception("Should have thrown on missing data because, even though flag to allow null is set, typ eis not compaitble with it");
             }
             catch (InvalidOperationException) { }
-            NullTypes nt = Toml.Get<NullTypes>(tt, true);
+            NullTypes nt = Toml.FromToml<NullTypes>(tt, true);
             Assert.IsTrue(nt.In is null && nt.Sn is null);
         }
 
@@ -162,11 +162,11 @@ namespace TomlDotNet.Tests
             ;
 
             var dIn = new Data(5, 6.6, "hi", true);
-            var s = TomlDotNet.Toml.ToToml(dIn);
+            var s = TomlDotNet.Toml.ToTomlString(dIn);
             var filename = @"serializeBasic.toml";
             System.IO.File.WriteAllText(filename, s);
 
-            var dOut = Toml.GetFromFile<Data>(filename);
+            var dOut = Toml.FromFile<Data>(filename);
 
             Assert.IsTrue(dIn == dOut);
             ;
