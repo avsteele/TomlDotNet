@@ -85,8 +85,8 @@ namespace TomlDotNet.Tests
 
 
             // now write t file and back to see if same
-            var filename = @"dateTime.toml";
-            System.IO.File.WriteAllText(@"dateTime.toml", tt.SerializedValue);
+            var filename = @"dateTimeFile.toml";
+            System.IO.File.WriteAllText(filename, tt.SerializedValue);
             
             var dtIn2 = TomlDotNet.Toml.GetFromFile<DatesTimes>(filename);
 
@@ -151,6 +151,25 @@ namespace TomlDotNet.Tests
             catch (InvalidOperationException) { }
             NullTypes nt = Toml.Get<NullTypes>(tt, true);
             Assert.IsTrue(nt.In is null && nt.Sn is null);
+        }
+
+        [TestMethod]
+        public void SerializeBasic()
+        {
+            Tomlet.Models.TomlTable tt = new();
+
+            tt.PutValue("b", Tomlet.Models.TomlBoolean.ValueOf(false));
+            ;
+
+            var dIn = new Data(5, 6.6, "hi", true);
+            var s = TomlDotNet.Toml.ToToml(dIn);
+            var filename = @"serializeBasic.toml";
+            System.IO.File.WriteAllText(filename, s);
+
+            var dOut = Toml.GetFromFile<Data>(filename);
+
+            Assert.IsTrue(dIn == dOut);
+            ;
         }
     }
 
