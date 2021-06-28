@@ -4,15 +4,20 @@ using System.Linq;
 using Tomlet.Models;
 using System.Collections.Generic;
 
+
 namespace TomlDotNet
 {
     public enum TomlData { Table, Array, Comment, String, Integer, Float, DateTime }
 
     //public delegate object Converter(TomlValue value, Type targetType);
-
     //public delegate T ValueTypeConverter<T, U>(U from) where T : struct where U : struct;
-
-
+    /// https://github.com/SamboyCoding/Tomlet
+    /// https://github.com/toml-lang/toml/blob/master/toml.md
+    /// https://github.com/paiden/Nett
+    //
+    /// <summary>
+    /// 
+    /// </summary>
     public static class Toml
     {
         public static Dictionary<(Type from, Type to), Func<object, object>> Conversions { get; private set; } = new();
@@ -75,6 +80,8 @@ namespace TomlDotNet
                     : throw new InvalidCastException($"double->{type}"),
                 },
                 TomlArray a => ConvertBaseObj(a),
+                TomlLocalDateTime ldt => ConvertBaseObj(ldt),
+                TomlOffsetDateTime odt => ConvertBaseObj(odt),
                 TomlTable t => Get(t, type),
                 null => throw new ArgumentNullException(nameof(value)),
                 _ => throw new NotImplementedException(type.ToString()),
@@ -88,6 +95,9 @@ namespace TomlDotNet
                 TomlBoolean b => b.Value,
                 TomlDouble d => d.Value,
                 TomlArray a => ConvertArray(a),
+                TomlLocalDateTime ldt => ldt.Value,
+                TomlOffsetDateTime odt => odt.Value,
+                TomlTable => throw new NotSupportedException("Array of tables not supported"),
                 _ => throw new InvalidOperationException("Only TomlString, long ,bool, double, or array (of obj) allowed")
             };
 

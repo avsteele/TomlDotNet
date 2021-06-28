@@ -21,7 +21,7 @@ namespace TomlDotNet.Tests
             tt.Put("D", data.D);
             tt.Put("S", data.S);
             tt.Put("B", data.B);
-            var dout = TomlDotNet.Toml.Get<Data>(tt);
+            var dout = Toml.Get<Data>(tt);
             Assert.IsTrue(data == dout);
         }
 
@@ -44,30 +44,71 @@ namespace TomlDotNet.Tests
             Assert.IsTrue(((Tomlet.Models.TomlDouble)a[2]).Value == (double)r.A[2]);
         }
 
+        /// <summary>
+        /// Test whether Datetime types can be put into toml form and then rad back into a CLR record
+        /// Datetimes are serialized without an offset at the end, and without respect to the 'Kind' field. therefore
+        /// ther is an ambigutuity.
+        /// The optionare to always use the same 'kind' of DateTime, or alwasy use DateTimeOffset
+        /// See https://github.com/paiden/Nett/blob/master/dfx/articles/pitfalls.md#datetime-vs-datetimeoffset
+        /// </summary>
         [TestMethod]
         public void DateTimes()
         {
-            throw new NotImplementedException();
+            var dtLocal = DateTime.Now;
+            var dtUtc = dtLocal.ToUniversalTime();
+            var dto = new DateTimeOffset(dtLocal);
+            var dtIn = new DatesTimes(dtLocal, dtUtc, dto);
+
+            Tomlet.Models.TomlDocument tt = Tomlet.Models.TomlDocument.CreateEmpty();
+            tt.Put("DT", dtIn.DT);
+            tt.Put("DTUtc", dtIn.DTUtc);
+            tt.Put("Dto", dtIn.Dto);
+
+            var dtOut = Toml.Get<DatesTimes>(tt);
+
+            Assert.IsTrue(dtIn == dtOut);
+        }
+
+        [TestMethod]
+        public void DateTimeFile()
+        {
+            var dtLocal = DateTime.Now;
+            var dtUtc = dtLocal.ToUniversalTime();
+            var dto = new DateTimeOffset(dtLocal);
+
+            var dtIn = new DatesTimes(dtLocal, dtUtc, dto);
+
+            Tomlet.Models.TomlDocument tt = Tomlet.Models.TomlDocument.CreateEmpty();
+            tt.Put("DT", dtIn.DT); // serialized without offset time
+            tt.Put("DTUtc", dtIn.DTUtc); //serializded withut offset time
+            tt.Put("Dto", dtIn.Dto); // serialized with offsettime
+
+            System.IO.File.WriteAllText(@"dateTime.toml", tt.SerializedValue);
         }
 
         [TestMethod]
         public void Converters()
         {
-            var cIn = new Conv(5, 6, 7, 8.8, 9.9F);
+            var cIn = new Conv(4L, 5, 6, 7, 100L, 1001L, 8.8, 9.9F);
 
             Tomlet.Models.TomlTable tt = new();
-            tt.Put("I", cIn.I); // inserted into table as TomlLong -> needs conversion to int
-            tt.Put("UI", cIn.UI); // inserted into table as TomlLong -> needs conversion to uint
-            tt.Put("UL", cIn.UL); // inserted into table as TomlLong -> needs conversion to ulong
-            tt.Put("D", cIn.D); // inserted into table as TomlDouble -> NO CONVERSION
-            tt.Put("F", cIn.F); // inserted into table as TomlDouble -> needs convresion to float 
+            tt.Put("L", cIn.L); // inserted as TomlLong : NO CONVERSION
+            tt.Put("I", cIn.I); // inserted as TomlLong : needs long=>int
+            tt.Put("UI", cIn.UI); // inserted as TomlLong : needs long=> uint
+            tt.Put("UL", cIn.UL); // inserted as TomlLong : needs long=> ulong
+            tt.Put("LtoF", (long)cIn.LtoF); // inserted as TomlLong : long=>float
+            tt.Put("LtoD", (long)cIn.LtoD); // inserted as TomlLong : long=>double
+            tt.Put("D", cIn.D); // inserted as TomlDouble : NO CONVERSION
+            tt.Put("F", cIn.F); // inserted as TomlDouble : needs double=>float
 
-            Toml.Conversions.Add((typeof(long), typeof(int)), (i) => Toml.ToInt((long)i));
-            Toml.Conversions.Add((typeof(long), typeof(uint)), (i) => Toml.ToUInt((long)i));
-            Toml.Conversions.Add((typeof(long), typeof(ulong)), (i) => Toml.ToULong((long)i));
+            Toml.Conversions.Add((typeof(long), typeof(int)), (i) => Convert.ToInt32((long)i));
+            Toml.Conversions.Add((typeof(long), typeof(uint)), (i) => Convert.ToUInt32((long)i));
+            Toml.Conversions.Add((typeof(long), typeof(ulong)), (i) => Convert.ToUInt64((long)i));
+            Toml.Conversions.Add((typeof(long), typeof(float)), (i) => Convert.ToSingle((long)i));
             Toml.Conversions.Add((typeof(long), typeof(double)), (i) => Convert.ToDouble((long)i));
             Toml.Conversions.Add((typeof(double), typeof(float)), (d) => Convert.ToSingle((double)d));
-            var cOut = Toml.Get<Conv>(tt); // attempt extaction of ints with conversions
+
+            var cOut = Toml.Get<Conv>(tt); // attempt extaction full clas data, requires conversions
             Assert.IsTrue(cIn == cOut);
         }
 
@@ -91,5 +132,7 @@ namespace TomlDotNet.Tests
 
     public record ArrayHolder(List<object> A);
 
-    public record Conv(int I, uint UI, ulong UL, double D, float F);
+    public record Conv(long L, int I, uint UI, ulong UL, double LtoD, float LtoF, double D, float F);
+
+    public record DatesTimes( DateTime DT, DateTime DTUtc, DateTimeOffset Dto);
 }
