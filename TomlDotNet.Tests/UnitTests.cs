@@ -162,7 +162,7 @@ namespace TomlDotNet.Tests
             ;
 
             var dIn = new Data(5, 6.6, "hi", true);
-            var s = TomlDotNet.Toml.ToTomlString(dIn);
+            var s = TomlDotNet.Toml.RecordToTomlString(dIn);
             var filename = @"serializeBasic.toml";
             System.IO.File.WriteAllText(filename, s);
 
