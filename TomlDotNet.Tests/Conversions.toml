@@ -1,0 +1,10 @@
+﻿# support for numeric conversions that are 'usualy' OK
+
+L = 5
+I = 6
+UI = 7
+UL = 8
+LtoD = 9
+LtoF = 10
+D = 12.34
+F = 45.67
