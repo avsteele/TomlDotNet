@@ -1,16 +1,14 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System.Text.Json;
 using System;
 using System.Collections.Generic;
-using System.Collections;
-
-using Tomlet;
-using TomlDotNet;
 
 namespace TomlDotNet.Tests
 {
+    /// <summary>
+    /// Tests of TomlDotNet's deserialization
+    /// </summary>
     [TestClass]
-    public class TestToml
+    public class Deserialization
     {
         [TestMethod]
         public void BasicTypes()
@@ -21,7 +19,7 @@ namespace TomlDotNet.Tests
             tt.Put("D", data.D);
             tt.Put("S", data.S);
             tt.Put("B", data.B);
-            var dout = Toml.FromToml<Data>(tt);
+            var dout = Deserialize.FromToml<Data>(tt);
             Assert.IsTrue(data == dout);
         }
 
@@ -34,7 +32,7 @@ namespace TomlDotNet.Tests
                 false,
                 5.55
             };
-            // TODO: can't do a string because .Add doesn't allow it??! pretty sure TOML allows arrays of string s though...
+            // TODO: can't add string because .Add doesn't allow it, because Add requires types with no-arg constructors(?!)
             var tt = new Tomlet.Models.TomlTable();
             tt.PutValue("A", a);
             var r = new ArrayHolder(new() { 5L, false, 5.55 });
@@ -64,7 +62,7 @@ namespace TomlDotNet.Tests
             tt.Put("DTUtc", dtIn.DTUtc);
             tt.Put("Dto", dtIn.Dto);
 
-            var dtOut = Toml.FromToml<DatesTimes>(tt);
+            var dtOut = Deserialize.FromToml<DatesTimes>(tt);
 
             Assert.IsTrue(dtIn == dtOut);
         }
@@ -88,7 +86,7 @@ namespace TomlDotNet.Tests
             var filename = @"dateTimeFile.toml";
             System.IO.File.WriteAllText(filename, tt.SerializedValue);
             
-            var dtIn2 = TomlDotNet.Toml.FromFile<DatesTimes>(filename);
+            var dtIn2 = TomlDotNet.Deserialize.FromFile<DatesTimes>(filename);
 
             Assert.IsTrue(dtIn == dtIn2);
         }
@@ -108,14 +106,14 @@ namespace TomlDotNet.Tests
             tt.Put("D", cIn.D); // inserted as TomlDouble : NO CONVERSION
             tt.Put("F", cIn.F); // inserted as TomlDouble : needs double=>float
 
-            Toml.Conversions.Add((typeof(long), typeof(int)), (i) => Convert.ToInt32((long)i));
-            Toml.Conversions.Add((typeof(long), typeof(uint)), (i) => Convert.ToUInt32((long)i));
-            Toml.Conversions.Add((typeof(long), typeof(ulong)), (i) => Convert.ToUInt64((long)i));
-            Toml.Conversions.Add((typeof(long), typeof(float)), (i) => Convert.ToSingle((long)i));
-            Toml.Conversions.Add((typeof(long), typeof(double)), (i) => Convert.ToDouble((long)i));
-            Toml.Conversions.Add((typeof(double), typeof(float)), (d) => Convert.ToSingle((double)d));
+            Deserialize.Conversions.Add((typeof(long), typeof(int)), (i) => Convert.ToInt32((long)i));
+            Deserialize.Conversions.Add((typeof(long), typeof(uint)), (i) => Convert.ToUInt32((long)i));
+            Deserialize.Conversions.Add((typeof(long), typeof(ulong)), (i) => Convert.ToUInt64((long)i));
+            Deserialize.Conversions.Add((typeof(long), typeof(float)), (i) => Convert.ToSingle((long)i));
+            Deserialize.Conversions.Add((typeof(long), typeof(double)), (i) => Convert.ToDouble((long)i));
+            Deserialize.Conversions.Add((typeof(double), typeof(float)), (d) => Convert.ToSingle((double)d));
 
-            var cOut = Toml.FromToml<Conv>(tt); // attempt extaction full clas data, requires conversions
+            var cOut = Deserialize.FromToml<Conv>(tt); // attempt extaction full clas data, requires conversions
             Assert.IsTrue(cIn == cOut);
         }
 
@@ -128,7 +126,7 @@ namespace TomlDotNet.Tests
             var tt = new Tomlet.Models.TomlTable();
             // using 'Put' instead of putvalue here does something odd
             tt.PutValue("I", I);
-            var dOut = Toml.FromToml<Nested>(tt);
+            var dOut = Deserialize.FromToml<Nested>(tt);
             Assert.IsTrue(dOut.I.L == data.I.L);
         }
 
@@ -139,17 +137,17 @@ namespace TomlDotNet.Tests
 
             try
             {
-                NullTypes nte = Toml.FromToml<NullTypes>(tt);
+                NullTypes nte = Deserialize.FromToml<NullTypes>(tt);
                 throw new Exception("Should have thrown on missing data because flag to allow null not set");
             }
             catch (InvalidOperationException) { }
             try
             {
-                NoNullTypes nte = Toml.FromToml<NoNullTypes>(tt, true);
+                NoNullTypes nte = Deserialize.FromToml<NoNullTypes>(tt, true);
                 throw new Exception("Should have thrown on missing data because, even though flag to allow null is set, typ eis not compaitble with it");
             }
             catch (InvalidOperationException) { }
-            NullTypes nt = Toml.FromToml<NullTypes>(tt, true);
+            NullTypes nt = Deserialize.FromToml<NullTypes>(tt, true);
             Assert.IsTrue(nt.In is null && nt.Sn is null);
         }
 
@@ -162,27 +160,14 @@ namespace TomlDotNet.Tests
             ;
 
             var dIn = new Data(5, 6.6, "hi", true);
-            var s = TomlDotNet.Toml.RecordToTomlString(dIn);
+            var s = Serialize.RecordToTomlString(dIn);
             var filename = @"serializeBasic.toml";
             System.IO.File.WriteAllText(filename, s);
 
-            var dOut = Toml.FromFile<Data>(filename);
+            var dOut = Deserialize.FromFile<Data>(filename);
 
             Assert.IsTrue(dIn == dOut);
             ;
         }
     }
-
-    public record Data(long L, double D, string S, bool B);
-    public record Nested(Inner I);
-    public record Inner(long L);
-
-    public record ArrayHolder(List<object> A);
-
-    public record Conv(long L, int I, uint UI, ulong UL, double LtoD, float LtoF, double D, float F);
-
-    public record DatesTimes( DateTime DT, DateTime DTUtc, DateTimeOffset Dto);
-
-    public record NullTypes(int? In, string? Sn);
-    public record NoNullTypes(string Sn);
 }

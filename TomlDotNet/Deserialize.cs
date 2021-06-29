@@ -8,22 +8,34 @@ using System.Collections.Generic;
 namespace TomlDotNet
 {
 
-    //public delegate object Converter(TomlValue value, Type targetType);
-    //public delegate T ValueTypeConverter<T, U>(U from) where T : struct where U : struct;
     /// https://github.com/SamboyCoding/Tomlet
     /// https://github.com/toml-lang/toml/blob/master/toml.md
     /// https://github.com/paiden/Nett
     //
     /// <summary>
-    /// 
+    /// Method facilitation conversion from TOML data to CLR objects.
     /// </summary>
-    public static class Toml
+    public static class Deserialize
     {
         public static Dictionary<(Type from, Type to), Func<object, object>> Conversions { get; private set; } = new();
 
+        /// <summary>
+        /// Constructs an instance of type T from the contents of the TOML file filePath
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="filePath">realtive or absolute path to a TOML file</param>
+        /// <param name="allowNullFillIfMissing"></param>
+        /// <returns></returns>
         public static T FromFile<T>(string filePath, bool allowNullFillIfMissing = false) where T : class
             => FromString<T>(System.IO.File.ReadAllText(filePath), allowNullFillIfMissing);
 
+        /// <summary>
+        /// As FromFile, but the TOML file contents are passed directly as a string
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="tomlFileContents"></param>
+        /// <param name="allowNullFillIfMissing"></param>
+        /// <returns></returns>
         public static T FromString<T>(string tomlFileContents, bool allowNullFillIfMissing = false) where T : class
         {
             var parser = new Tomlet.TomlParser();
@@ -113,68 +125,6 @@ namespace TomlDotNet
         public static List<object> FromTomlArray(TomlArray a)
             => new(a.AsEnumerable().Select((v,_)=>FromTomlBase(v)));
 
-
-        public static void RecordToTomlFile<T>(T data, string filename) where T:notnull
-        {
-            var str = RecordToTomlString(data);
-            System.IO.File.WriteAllText(filename, str);
-        }
-
-        public static string RecordToTomlString<T>(T data) where T : notnull
-        {
-            var table = ToToml(data, typeof(T));
-            return table.SerializeNonInlineTable(null, false);
-        }
-
-        /// <summary>
-        /// Converts a CLR object into a Tomlet TomlTable.   It looks for a constructor uses this to constrct the object.  
-        /// The parameter name in the constructor should match the property name ot be extracted. This is the case for e.g.
-        /// default-made record constructors 'public record Data(int I, string S...);'
-        /// </summary>
-        /// <param name="data"></param>
-        /// <param name="t"></param>
-        /// <returns></returns>
-        public static TomlTable ToToml(object data, Type t)
-        {
-            if (data is null) throw new ArgumentNullException(nameof(data));
-            var tt = new Tomlet.Models.TomlTable();
-
-            //iterate over constructor
-            var constructor = SelectConstructor(t);
-            var param_list = constructor.GetParameters();
-
-            foreach (var p in param_list)
-            {
-                if (p.ParameterType.Equals(t)) 
-                    throw new InvalidOperationException("Cannot types with constructors containing an element of thier own type");
-                if (p.Name is null) throw new InvalidOperationException($"Constructor parameter name {p.Name} is null?");
-                var obj = GetPropValue(data, p.Name);
-                if (obj is null) throw new InvalidOperationException($"Unexpected property {p.Name}'s value not found on object");
-                var tomlValue = ToTomlBase(obj);
-                if (tomlValue is not null)
-                    tt.PutValue(p.Name, tomlValue);
-                else
-                    ToToml(obj, p.ParameterType);
-            }
-            return tt;
-        }
-
-        public static TomlValue? ToTomlBase(object data) => data switch
-        {
-            bool b => TomlBoolean.ValueOf(b),
-            double _ or float _ => new TomlDouble(Convert.ToDouble(data)),
-            long _ or int _ or uint _ or short _ or ushort _ or byte _ => new TomlLong(Convert.ToInt64(data)),
-            string s => new TomlString(s),
-            DateTime dt => new TomlLocalDateTime(dt),
-            DateTimeOffset dto => new TomlOffsetDateTime(dto),
-            _ => throw new InvalidOperationException($"No known conversion from {data.GetType()} to Toml"),
-        };
-
-        public static object? GetPropValue(object src, string propName)
-        {
-            return src.GetType().GetProperty(propName)?.GetValue(src, null);
-        }
-
         /// <summary>
         /// Selects a constructor on type t that is used for serialization/deserialization
         /// </summary>
@@ -182,7 +132,9 @@ namespace TomlDotNet
         /// <returns></returns>
         public static ConstructorInfo SelectConstructor(Type t)
         {
-            return t.GetConstructors(BindingFlags.Public | BindingFlags.Instance)[0];
+            var cs = t.GetConstructors(BindingFlags.Public | BindingFlags.Instance);
+            if (cs.Length == 1) return cs[0];
+            throw new InvalidOperationException($"Cannot select constructor to use as (de)serialization guide. Found more than 1 type {t.FullName}");
         }
     }
 }
