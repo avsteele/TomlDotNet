@@ -1,10 +1,12 @@
 # TomlDotNet
+
 Simple serialization of CLR records to TOML and the reverse. Uses TOMLET (https://github.com/SamboyCoding/Tomlet) for parse the TOML.
+
+WARNING: this works, but is a work-in-progress. The API may change at any time.
 
 ## Capabilities
 
-### Deserialization (TOML-> C# record)
-
+### De-serialization (TOML-> C# record)
 
 ```TOML
 # in file Example.toml: 
@@ -24,7 +26,7 @@ var dIn = TomlDotNet.Deserialize.FromFile<Data>("Example.toml");
 Assert.IsTrue((dIn.L == 5) && (dIn.D == 0.123) && (dIn.S=="hello") && (dIn.B == true));
 ```
 
-### Cupport for conversions
+### Support for conversions
 
 ```TOML
 # in Conversions.toml
@@ -61,12 +63,19 @@ Deserialize.Conversions.Add((typeof(double), typeof(float)), (d) => Convert.ToSi
 var cOut = TomlDotNet.Deserialize.FromFile<Conv>("Conversions.toml"); 
 ```
 
+## Methods / Why
+
+Records are map quite well to toml/configuration data.  
+By using the the toml data to populate the parameters of a constructor we can 
+ensure a well constructed object and can deserialize (and serialize in cases where 
+we are working with of plain-old-data) without exposing fields or properties of 
+our objects publicly.  The default immutability of records is also a good fit for 
+representation of on-disk toml data.
 
 ## TODO
 
-- [X] Basic Deserialization from TOML file to C# record
+- [X] Basic De-serialization from TOML file to C# record
 - [X] Basic Serialization from TOML file to a C# record
-- [ ] Basic type conversions
+- [X] Basic type conversions
 - [ ] Refinements to conversion API
-
-
+- [ ] Constructor selection
