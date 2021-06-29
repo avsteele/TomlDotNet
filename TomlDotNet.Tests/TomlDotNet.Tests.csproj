@@ -22,4 +22,10 @@
     <ProjectReference Include="..\TomlDotNet\TomlDotNet.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Example.toml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

@@ -1,0 +1,6 @@
+﻿# file for filling: 
+#    public record Data(long L, double D, string S, bool B);
+L = 5
+D = 0.123
+S = "hello"
+B = true

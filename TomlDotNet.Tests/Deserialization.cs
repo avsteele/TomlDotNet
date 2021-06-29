@@ -24,6 +24,14 @@ namespace TomlDotNet.Tests
         }
 
         [TestMethod]
+        public void BasicDeserialization()
+        {
+            var dIn = TomlDotNet.Deserialize.FromFile<Data>("Example.toml");
+
+            Assert.IsTrue((dIn.L == 5) && (dIn.D == 0.123) && (dIn.S=="hello") && (dIn.B == true));
+        }
+
+        [TestMethod]
         public void Array()
         {
             var a = new Tomlet.Models.TomlArray
