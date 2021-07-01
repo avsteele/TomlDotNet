@@ -18,4 +18,18 @@ namespace TomlDotNet.Tests
 
     public record NullTypes(int? In, string? Sn);
     public record NoNullTypes(string Sn);
+
+    /// <summary>
+    /// USed in test Deserialize -> TestCOnstructorFilter
+    /// </summary>
+    public class ManyConstructors
+    {
+        //public ManyConstructors() { }
+        static ManyConstructors() { } //should be filtered (is static)
+        private ManyConstructors(int z, int y, int x) { } //should be filterd(is private)
+        public ManyConstructors(int i, int j, int k, int l, int m, int n, int o, int p, int q) { } //should be filtered, # req params to large
+        public ManyConstructors(int i) { }
+        public ManyConstructors(int i, string s) { }
+        public ManyConstructors(int i = 5, int j = 10, int k = 15, int l = 20, int m = 25) { }
+    }
 }

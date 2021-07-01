@@ -196,5 +196,25 @@ namespace TomlDotNet.Tests
             Assert.IsTrue(dIn == dOut);
             ;
         }
+
+        [TestMethod]
+        public void TestConstructorFilter()
+        {
+            var cIn = new Conv(4L, 5, 6, 7, 100L, 1001L, 8.8, 9.9F);
+
+            Tomlet.Models.TomlTable tt = new();
+            tt.Put("L", cIn.L); 
+            tt.Put("I", cIn.I); 
+            tt.Put("UI", cIn.UI); 
+            tt.Put("UL", cIn.UL); 
+            tt.Put("LtoF", (long)cIn.LtoF);
+            tt.Put("LtoD", (long)cIn.LtoD); 
+            tt.Put("D", cIn.D); 
+            tt.Put("F", cIn.F); 
+
+
+            var cs = Deserialize.ConstructorTryOrder(typeof(ManyConstructors), tt);
+            Assert.IsTrue(cs.Count == 3);
+        }
     }
 }

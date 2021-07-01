@@ -136,5 +136,24 @@ namespace TomlDotNet
             if (cs.Length == 1) return cs[0];
             throw new InvalidOperationException($"Cannot select constructor to use as (de)serialization guide. Found more than 1 type {t.FullName}");
         }
+
+        /// <summary>
+        /// Filteres public, instance constructors of type t that have more paramers than keys of the toml table.
+        /// </summary>
+        /// <param name="t"></param>
+        /// <param name="tt"></param>
+        /// <returns></returns>
+        public static List<ConstructorInfo> ConstructorTryOrder(Type t, TomlTable tt)
+        {
+            var cs = t.GetConstructors(BindingFlags.Public | BindingFlags.Instance);
+            // next line ensures there are enough keys to fill the # of reuired (non-optional) parameters
+            var l = (from c in cs where NumberRequiredParams(c) <= tt.Keys.Count select c).ToList();
+            //var l = cs.ToList();
+            l.Sort((c1, c2) => c1.GetParameters().Length.CompareTo(c2.GetParameters().Length));
+            return l;
+        }
+
+        public static int NumberRequiredParams(ConstructorInfo c)
+            => (from p in c.GetParameters() where !p.IsOptional select p).Count();
     }
 }
