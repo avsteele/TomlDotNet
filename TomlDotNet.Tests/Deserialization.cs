@@ -157,26 +157,26 @@ namespace TomlDotNet.Tests
             Assert.IsTrue(dOut.I.L == data.I.L);
         }
 
-        [TestMethod]
-        public void NullValues()
-        {
-            Tomlet.Models.TomlTable tt = new();
+        //[TestMethod]
+        //public void NullValues()
+        //{
+        //    Tomlet.Models.TomlTable tt = new();
 
-            try
-            {
-                NullTypes nte = Deserialize.FromToml<NullTypes>(tt);
-                throw new Exception("Should have thrown on missing data because flag to allow null not set");
-            }
-            catch (InvalidOperationException) { }
-            try
-            {
-                NoNullTypes nte = Deserialize.FromToml<NoNullTypes>(tt, true);
-                throw new Exception("Should have thrown on missing data because, even though flag to allow null is set, typ eis not compaitble with it");
-            }
-            catch (InvalidOperationException) { }
-            NullTypes nt = Deserialize.FromToml<NullTypes>(tt, true);
-            Assert.IsTrue(nt.In is null && nt.Sn is null);
-        }
+        //    try
+        //    {
+        //        NullTypes nte = Deserialize.FromToml<NullTypes>(tt);
+        //        throw new Exception("Should have thrown on missing data because flag to allow null not set");
+        //    }
+        //    catch (InvalidOperationException) { }
+        //    try
+        //    {
+        //        NoNullTypes nte = Deserialize.FromToml<NoNullTypes>(tt, true);
+        //        throw new Exception("Should have thrown on missing data because, even though flag to allow null is set, typ eis not compaitble with it");
+        //    }
+        //    catch (InvalidOperationException) { }
+        //    NullTypes nt = Deserialize.FromToml<NullTypes>(tt, true);
+        //    Assert.IsTrue(nt.In is null && nt.Sn is null);
+        //}
 
         [TestMethod]
         public void SerializeBasic()
@@ -212,9 +212,38 @@ namespace TomlDotNet.Tests
             tt.Put("D", cIn.D); 
             tt.Put("F", cIn.F); 
 
-
             var cs = Deserialize.ConstructorTryOrder(typeof(ManyConstructors), tt);
             Assert.IsTrue(cs.Count == 3);
+        }
+
+        [TestMethod]
+        public void NoValidConstructor()
+        {
+            var cIn = new Data(1L, 2.0, "hi", true);
+
+            Tomlet.Models.TomlTable tt = new();
+            tt.Put("L", cIn.L);
+            tt.Put("D", cIn.D);
+            tt.Put("S", cIn.S);
+            //tt.Put("B", cIn.B);
+            try
+            {
+                var cOut = TomlDotNet.Deserialize.FromToml<Data>(tt);
+            }
+            catch { return; }
+            throw new Exception("Should have thrown because missing required elements");
+        }
+
+        [TestMethod]
+        public void Optional()
+        {
+
+            Tomlet.Models.TomlTable tt = new();
+            tt.Put("L", 1L);
+            tt.Put("D", 2.0);
+
+            // tt missing two fields needed to fill Optional constructor, but they are optional so this should be OK
+            var cOut = TomlDotNet.Deserialize.FromToml<Optional>(tt);
         }
     }
 }

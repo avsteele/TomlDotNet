@@ -27,5 +27,13 @@ namespace TomlDotNet.Tests
             Assert.IsTrue(dIn == dOut);
             ;
         }
+
+        [TestMethod]
+        public void Exclude()
+        {
+
+        }
+
+        public record Exclusion([field:NonSerialized] long L);
     }
 }

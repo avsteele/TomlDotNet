@@ -26,8 +26,8 @@ namespace TomlDotNet
         /// <param name="filePath">realtive or absolute path to a TOML file</param>
         /// <param name="allowNullFillIfMissing"></param>
         /// <returns></returns>
-        public static T FromFile<T>(string filePath, bool allowNullFillIfMissing = false) where T : class
-            => FromString<T>(System.IO.File.ReadAllText(filePath), allowNullFillIfMissing);
+        public static T FromFile<T>(string filePath) where T : class
+            => FromString<T>(System.IO.File.ReadAllText(filePath));
 
         /// <summary>
         /// As FromFile, but the TOML file contents are passed directly as a string
@@ -36,46 +36,54 @@ namespace TomlDotNet
         /// <param name="tomlFileContents"></param>
         /// <param name="allowNullFillIfMissing"></param>
         /// <returns></returns>
-        public static T FromString<T>(string tomlFileContents, bool allowNullFillIfMissing = false) where T : class
+        public static T FromString<T>(string tomlFileContents) where T : class
         {
             var parser = new Tomlet.TomlParser();
-            return FromToml<T>(parser.Parse(tomlFileContents), allowNullFillIfMissing);
+            return FromToml<T>(parser.Parse(tomlFileContents));
         }
 
-        public static T FromToml<T>(TomlTable tt, bool allowNullFillIfMissing = false) where T : class
-            => (T)FromToml(tt, typeof(T), allowNullFillIfMissing);
+        public static T FromToml<T>(TomlTable tt) where T : class
+            => (T)FromToml(tt, typeof(T));
 
-        private static object FromToml(TomlTable tt, Type t, bool allowNullFillIfMissing)
+        private static object FromToml(TomlTable tt, Type t)
         {
-            // TODO: assuming just one for now
-            var constructor = SelectConstructor(t);
-            var param_list = constructor.GetParameters();
+            foreach(var c in ConstructorTryOrder(t,tt))
+            {
+                try
+                { return FromToml(tt, t, c); }
+                catch {}
+            }
+            throw new InvalidOperationException($"No valid constructor found able to convert Toml to type {t}");
+        }
+
+        public static object FromToml(TomlTable tt, Type t, ConstructorInfo c)
+        {
+            var param_list = c.GetParameters();
 
             var params_ = new object?[param_list.Length];
             foreach (var (v, idx) in param_list.Select((ParameterInfo v, int idx) => (v, idx)))
             {
-                params_[idx] = GetObj(tt, v, allowNullFillIfMissing);
+                params_[idx] = GetObj(tt, v);
             }
-            return Convert.ChangeType(constructor.Invoke(params_), t);
+            return Convert.ChangeType(c.Invoke(params_), t);
         }
 
-        private static object? GetObj(TomlTable tt, ParameterInfo p, bool allowNullFillIfMissing = false)
+        private static object? GetObj(TomlTable tt, ParameterInfo p)
         {
-            if(tt.ContainsKey(p.Name ?? throw new ArgumentException($"{nameof(p)}.name must not be null", nameof(p))))
+            if(p.Name is null) throw new ArgumentException($"{nameof(p)}.name must not be null", nameof(p));
+            if( tt.ContainsKey(p.Name))
             {
                 var value = tt.GetValue(p.Name);
-                return FromToml(value, p.ParameterType, allowNullFillIfMissing);
+                return FromToml(value, p.ParameterType);
             }
             else
             {
-                if (!allowNullFillIfMissing)
-                    throw new InvalidOperationException($"No value for key {p.Name} found in Toml data, and null not allowed by user options");
-                if (NullCompatability.IsNullable(p)) return null;
-                throw new InvalidOperationException($"No value for key {p.Name} found in Toml data, and null not allowed by type");
+                if (p.IsOptional) return p.DefaultValue;
+                throw new InvalidOperationException($"no element in TOML found to match non-optional {p.Name}");
             }
         }
 
-        private static object FromToml(TomlValue value, Type type, bool allowNullFillIfMissing)
+        private static object FromToml(TomlValue value, Type type)
             => value switch
             {
                 TomlString s => type switch 
@@ -103,7 +111,7 @@ namespace TomlDotNet
                 TomlArray a => FromTomlBase(a),
                 TomlLocalDateTime ldt => FromTomlBase(ldt),
                 TomlOffsetDateTime odt => FromTomlBase(odt),
-                TomlTable t => FromToml(t, type, allowNullFillIfMissing),
+                TomlTable t => FromToml(t, type),
                 null => throw new ArgumentNullException(nameof(value)),
                 _ => throw new NotImplementedException(type.ToString()),
             };
@@ -126,30 +134,21 @@ namespace TomlDotNet
             => new(a.AsEnumerable().Select((v,_)=>FromTomlBase(v)));
 
         /// <summary>
-        /// Selects a constructor on type t that is used for serialization/deserialization
-        /// </summary>
-        /// <param name="t"></param>
-        /// <returns></returns>
-        public static ConstructorInfo SelectConstructor(Type t)
-        {
-            var cs = t.GetConstructors(BindingFlags.Public | BindingFlags.Instance);
-            if (cs.Length == 1) return cs[0];
-            throw new InvalidOperationException($"Cannot select constructor to use as (de)serialization guide. Found more than 1 type {t.FullName}");
-        }
-
-        /// <summary>
-        /// Filteres public, instance constructors of type t that have more paramers than keys of the toml table.
+        /// Filters public, instance constructors of type t on thier number of parameters.  
+        /// If a Tomlable is provided it filters other those that do not have 
         /// </summary>
         /// <param name="t"></param>
         /// <param name="tt"></param>
         /// <returns></returns>
-        public static List<ConstructorInfo> ConstructorTryOrder(Type t, TomlTable tt)
+        public static List<ConstructorInfo> ConstructorTryOrder(Type t, TomlTable? tt)
         {
-            var cs = t.GetConstructors(BindingFlags.Public | BindingFlags.Instance);
-            // next line ensures there are enough keys to fill the # of reuired (non-optional) parameters
+            var cs = t.GetConstructors(BindingFlags.Public | BindingFlags.Instance).ToList();
+            // sort on # params
+            cs.Sort((c1, c2) => c1.GetParameters().Length.CompareTo(c2.GetParameters().Length));
+            if (tt is null) return cs;            
+            // next line filter constructors with more required params than keys in the tomltable
+            //     this is just a performance enhancement really, so tt is optional
             var l = (from c in cs where NumberRequiredParams(c) <= tt.Keys.Count select c).ToList();
-            //var l = cs.ToList();
-            l.Sort((c1, c2) => c1.GetParameters().Length.CompareTo(c2.GetParameters().Length));
             return l;
         }
 

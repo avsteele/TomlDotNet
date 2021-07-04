@@ -4,6 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+/// <summary>
+/// Many records here use in tests via reflection. No not remove them just because static analysis says theya re unused
+/// </summary>
 namespace TomlDotNet.Tests
 {
     public record Data(long L, double D, string S, bool B);
@@ -16,11 +19,11 @@ namespace TomlDotNet.Tests
 
     public record DatesTimes(DateTime DT, DateTime DTUtc, DateTimeOffset Dto);
 
-    public record NullTypes(int? In, string? Sn);
+    //public record NullTypes(int? In, string? Sn);
     public record NoNullTypes(string Sn);
 
     /// <summary>
-    /// USed in test Deserialize -> TestCOnstructorFilter
+    /// USed in test Deserialize -> TestConstructorFilter
     /// </summary>
     public class ManyConstructors
     {
@@ -31,5 +34,11 @@ namespace TomlDotNet.Tests
         public ManyConstructors(int i) { }
         public ManyConstructors(int i, string s) { }
         public ManyConstructors(int i = 5, int j = 10, int k = 15, int l = 20, int m = 25) { }
+    }
+
+    public record Optional( long L, double D, string S="hi", bool B = true)
+    {
+        public Optional(long L, double D, string S, bool B, string S2) 
+            : this(L, D, S, B) { throw new Exception("Shouldn't be called"); }
     }
 }
