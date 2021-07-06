@@ -103,6 +103,7 @@ namespace TomlDotNet.Tests
             Serialize.RecordToTomlFile(dIn, fileName);
 
             var dOut = Deserialize.FromFile<ArrayOfTables2>(fileName);
+            ;
         }
     }
 }
