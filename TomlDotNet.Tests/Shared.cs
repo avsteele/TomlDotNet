@@ -15,6 +15,8 @@ namespace TomlDotNet.Tests
 
     public record HeteroArray(List<object> A);
     public record HomoArray(List<long> L, List<bool> B);
+    public record ArrayOfTables(List<TableElement> A);
+    public record TableElement(long L, bool B);
 
     public record Conv(long L, int I, uint UI, ulong UL, double LtoD, float LtoF, double D, float F);
 

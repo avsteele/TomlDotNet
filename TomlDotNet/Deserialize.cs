@@ -137,7 +137,7 @@ namespace TomlDotNet
             TomlBoolean b => b.Value,
             TomlDouble d => d.Value,
             TomlLocalDateTime ldt => ldt.Value,
-            TomlOffsetDateTime odt => odt.Value,
+            TomlOffsetDateTime odt => odt.Value,            
             _ => throw new InvalidOperationException("Only defined for single-value types"),
         };
 
@@ -163,7 +163,8 @@ namespace TomlDotNet
             var listType = typeof(List<>);
             var elementType = toType.GenericTypeArguments[0]; // for heterog this might be 'object'
             var constructedListType = listType.MakeGenericType(elementType);
-            IEnumerable<object> prm = from el in fromToml select DoConversion(ExtractValue(el), elementType);
+            //IEnumerable<object> prm = from el in fromToml select DoConversion(ExtractValue(el), elementType);
+            IEnumerable<object> prm = from el in fromToml select FromToml(el,elementType);
 
             // can't figure out how to construct the list directly from prm
             var instance = (System.Collections.IList)Activator.CreateInstance(constructedListType);
@@ -196,27 +197,6 @@ namespace TomlDotNet
             return null; //so suitable constructire found
         }
 
-        /// <summary>
-        /// Construct a homegeneous list from a toml array. Will throw if the passed type
-        /// </summary>
-        /// <param name="t">list element type </param>
-        /// <param name="a"></param>
-        /// <returns></returns>
-        private static object TryMakeHomogeneous(TomlArray a, Type t)
-        {
-            //if (t == typeof(List<object>)) return l;
-            var listType = typeof(List<>);
-            var constructedListType = listType.MakeGenericType(t);
-
-            var instance = Activator.CreateInstance(constructedListType);
-            if (instance is null) throw new InvalidOperationException("INstance of array is null?");
-            var inst2 = (System.Collections.IList)instance!;
-            foreach(var el in a.AsEnumerable())
-            {
-                inst2.Add(ExtractValue(el));
-            }
-            return inst2;
-        }
         /// <summary>
         /// Filters public, instance constructors of type t on thier number of parameters.  
         /// If a Tomlable is provided it filters other those that do not have 

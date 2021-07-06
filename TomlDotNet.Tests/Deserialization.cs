@@ -195,15 +195,6 @@ namespace TomlDotNet.Tests
         }
 
         [TestMethod]
-        public void ArrayOfTables()
-        {
-            throw new NotImplementedException();
-            var fname = "ArrayOfTables.toml";
-            var tt = Tomlet.TomlParser.ParseFile(fname);
-            ;
-        }
-
-        [TestMethod]
         public void HomoArrayTest()
         {
             var r = new HomoArray(new() { 5L, 6L, 7L }, new List<bool>() { true, false, true });
@@ -253,6 +244,7 @@ namespace TomlDotNet.Tests
             Assert.IsFalse((from el in dIn.A.Zip(dOut.A) where !UnBoxCompare(el.First, el.Second) select 0).Any());
 
         }
+        
         /// <summary>
         /// Unboxes an object and see if its ocntents are the same value-wise. Only works for a few types
         /// </summary>
@@ -265,13 +257,15 @@ namespace TomlDotNet.Tests
             if (o1 is IComparable c1 && o2 is IComparable c2)
                 return c1.CompareTo(c2)==0;
             return false;
-            //return o1 switch
-            //{
-            //    long l => l == (long)o2,
-            //    string s => s == (string)o2,
-            //    bool b => b == (bool)o2,
-            //    _ => throw new NotImplementedException(),
-            //};
+        }
+
+        [TestMethod]
+        public void ArrayOfTables()
+        {
+            var fname = "ArrayOfTables.toml";
+            var tt = Tomlet.TomlParser.ParseFile(fname);
+            var dOut = Deserialize.FromFile<ArrayOfTables>(fname);
+            ;
         }
     }
 }

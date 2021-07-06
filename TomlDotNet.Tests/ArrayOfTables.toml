@@ -1,6 +1,6 @@
 [[A]]
 L = 1
-S = "One"
+B =  true
 [[A]]
 L = 2
-S = "Two"
+B = true
