@@ -3,6 +3,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
+using Tomlet.Models;
+
 namespace TomlDotNet.Tests
 {
     /// <summary>
@@ -32,36 +34,7 @@ namespace TomlDotNet.Tests
             Assert.IsTrue((dIn.L == 5) && (dIn.D == 0.123) && (dIn.S=="hello") && (dIn.B == true));
         }
 
-        [TestMethod]
-        public void HomoArrayTest()
-        {
-            var r = new HomoArray(new() { 5L, 6L, 7L},new List<bool>() { true,false, true });
-            Deserialize.Conversions.Clear();
-            var L = new Tomlet.Models.TomlArray()
-            {
-                r.L[0],
-                r.L[1],
-                r.L[2]
-            };
-            var B = new Tomlet.Models.TomlArray()
-            {
-                r.B[0],
-                r.B[1],
-                r.B[2]
-            };
 
-            var tt = Tomlet.Models.TomlDocument.CreateEmpty();
-            tt.PutValue("L", L);
-            tt.PutValue("B", B);
-            //var arr = TomlDotNet.Toml.ConvertArray(a);
-            var s = tt.SerializedValue;
-            string fname = "Array.toml";
-            System.IO.File.WriteAllText(fname, s);
-            var rIn = Deserialize.FromFile<HomoArray>(fname);
-            Assert.IsFalse( (from el in rIn.L.Zip(r.L) where el.First != el.Second select 0).Any() );
-            Assert.IsFalse( (from el in rIn.B.Zip(r.B) where el.First != el.Second select 0).Any() );
-            ;
-        }
 
 
         public bool SameList<T>(List<T> l1, List<T> l2) where T : IComparable
@@ -224,9 +197,81 @@ namespace TomlDotNet.Tests
         [TestMethod]
         public void ArrayOfTables()
         {
+            throw new NotImplementedException();
             var fname = "ArrayOfTables.toml";
             var tt = Tomlet.TomlParser.ParseFile(fname);
             ;
+        }
+
+        [TestMethod]
+        public void HomoArrayTest()
+        {
+            var r = new HomoArray(new() { 5L, 6L, 7L }, new List<bool>() { true, false, true });
+            Deserialize.Conversions.Clear();
+            var L = new Tomlet.Models.TomlArray()
+            {
+                r.L[0],
+                r.L[1],
+                r.L[2]
+            };
+            var B = new Tomlet.Models.TomlArray()
+            {
+                r.B[0],
+                r.B[1],
+                r.B[2]
+            };
+
+            var tt = Tomlet.Models.TomlDocument.CreateEmpty();
+            tt.PutValue("L", L);
+            tt.PutValue("B", B);
+            //var arr = TomlDotNet.Toml.ConvertArray(a);
+            var s = tt.SerializedValue;
+            string fname = "Array.toml";
+            System.IO.File.WriteAllText(fname, s);
+            var rIn = Deserialize.FromFile<HomoArray>(fname);
+            Assert.IsFalse((from el in rIn.L.Zip(r.L) where el.First != el.Second select 0).Any());
+            Assert.IsFalse((from el in rIn.B.Zip(r.B) where el.First != el.Second select 0).Any());
+            ;
+        }
+
+        [TestMethod]
+        public void HeteroArrayTest()
+        {
+            var dIn = new HeteroArray(new List<object>() { 5L, true });
+            TomlArray A = new();
+            //A.Add(dIn.A[0]); // broken: because it causes TOmlet to write '{}', (i.e. an empty inline table) to the file
+            A.Add((long)dIn.A[0]);
+            A.Add((bool)dIn.A[1]);
+
+            var tt = TomlDocument.CreateEmpty();
+            tt.PutValue("A", A);
+
+            string fname = "ArrayHetero.toml";
+            System.IO.File.WriteAllText(fname, tt.SerializedValue);
+            ;
+            var dOut = Deserialize.FromFile<HeteroArray>(fname);
+            Assert.IsFalse((from el in dIn.A.Zip(dOut.A) where !UnBoxCompare(el.First, el.Second) select 0).Any());
+
+        }
+        /// <summary>
+        /// Unboxes an object and see if its ocntents are the same value-wise. Only works for a few types
+        /// </summary>
+        /// <param name="o1"></param>
+        /// <param name="o2"></param>
+        /// <returns></returns>
+        static bool UnBoxCompare(object o1, object o2)
+        {
+            if (o1.GetType() != o2.GetType()) return false;
+            if (o1 is IComparable c1 && o2 is IComparable c2)
+                return c1.CompareTo(c2)==0;
+            return false;
+            //return o1 switch
+            //{
+            //    long l => l == (long)o2,
+            //    string s => s == (string)o2,
+            //    bool b => b == (bool)o2,
+            //    _ => throw new NotImplementedException(),
+            //};
         }
     }
 }
