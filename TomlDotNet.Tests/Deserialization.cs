@@ -1,6 +1,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace TomlDotNet.Tests
 {
@@ -32,23 +33,39 @@ namespace TomlDotNet.Tests
         }
 
         [TestMethod]
-        public void Array()
+        public void HomoArrayTest()
         {
-            var a = new Tomlet.Models.TomlArray
+            var r = new HomoArray(new() { 5L, 6L, 7L},new List<bool>() { true,false, true });
+            Deserialize.Conversions.Clear();
+            var L = new Tomlet.Models.TomlArray()
             {
-                5,
-                false,
-                5.55
+                r.L[0],
+                r.L[1],
+                r.L[2]
             };
-            // TODO: can't add string because .Add doesn't allow it, because Add requires types with no-arg constructors(?!)
-            var tt = new Tomlet.Models.TomlTable();
-            tt.PutValue("A", a);
-            var r = new ArrayHolder(new() { 5L, false, 5.55 });
+            var B = new Tomlet.Models.TomlArray()
+            {
+                r.B[0],
+                r.B[1],
+                r.B[2]
+            };
+
+            var tt = Tomlet.Models.TomlDocument.CreateEmpty();
+            tt.PutValue("L", L);
+            tt.PutValue("B", B);
             //var arr = TomlDotNet.Toml.ConvertArray(a);
-            Assert.IsTrue(((Tomlet.Models.TomlLong)a[0]).Value == (long)r.A[0]);
-            Assert.IsTrue(((Tomlet.Models.TomlBoolean)a[1]).Value == (bool)r.A[1]);
-            Assert.IsTrue(((Tomlet.Models.TomlDouble)a[2]).Value == (double)r.A[2]);
+            var s = tt.SerializedValue;
+            string fname = "Array.toml";
+            System.IO.File.WriteAllText(fname, s);
+            var rIn = Deserialize.FromFile<HomoArray>(fname);
+            Assert.IsFalse( (from el in rIn.L.Zip(r.L) where el.First != el.Second select 0).Any() );
+            Assert.IsFalse( (from el in rIn.B.Zip(r.B) where el.First != el.Second select 0).Any() );
+            ;
         }
+
+
+        public bool SameList<T>(List<T> l1, List<T> l2) where T : IComparable
+            => (from el in l1.Zip(l2) where el.First.CompareTo(el.Second) == 0 select 0).Any();
 
         /// <summary>
         /// Test whether Datetime types can be put into toml form and then rad back into a CLR record
@@ -157,46 +174,6 @@ namespace TomlDotNet.Tests
             Assert.IsTrue(dOut.I.L == data.I.L);
         }
 
-        //[TestMethod]
-        //public void NullValues()
-        //{
-        //    Tomlet.Models.TomlTable tt = new();
-
-        //    try
-        //    {
-        //        NullTypes nte = Deserialize.FromToml<NullTypes>(tt);
-        //        throw new Exception("Should have thrown on missing data because flag to allow null not set");
-        //    }
-        //    catch (InvalidOperationException) { }
-        //    try
-        //    {
-        //        NoNullTypes nte = Deserialize.FromToml<NoNullTypes>(tt, true);
-        //        throw new Exception("Should have thrown on missing data because, even though flag to allow null is set, typ eis not compaitble with it");
-        //    }
-        //    catch (InvalidOperationException) { }
-        //    NullTypes nt = Deserialize.FromToml<NullTypes>(tt, true);
-        //    Assert.IsTrue(nt.In is null && nt.Sn is null);
-        //}
-
-        [TestMethod]
-        public void SerializeBasic()
-        {
-            Tomlet.Models.TomlTable tt = new();
-
-            tt.PutValue("b", Tomlet.Models.TomlBoolean.ValueOf(false));
-            ;
-
-            var dIn = new Data(5, 6.6, "hi", true);
-            var s = Serialize.RecordToTomlString(dIn);
-            var filename = @"serializeBasic.toml";
-            System.IO.File.WriteAllText(filename, s);
-
-            var dOut = Deserialize.FromFile<Data>(filename);
-
-            Assert.IsTrue(dIn == dOut);
-            ;
-        }
-
         [TestMethod]
         public void TestConstructorFilter()
         {
@@ -237,13 +214,19 @@ namespace TomlDotNet.Tests
         [TestMethod]
         public void Optional()
         {
-
             Tomlet.Models.TomlTable tt = new();
             tt.Put("L", 1L);
             tt.Put("D", 2.0);
-
             // tt missing two fields needed to fill Optional constructor, but they are optional so this should be OK
             var cOut = TomlDotNet.Deserialize.FromToml<Optional>(tt);
+        }
+
+        [TestMethod]
+        public void ArrayOfTables()
+        {
+            var fname = "ArrayOfTables.toml";
+            var tt = Tomlet.TomlParser.ParseFile(fname);
+            ;
         }
     }
 }

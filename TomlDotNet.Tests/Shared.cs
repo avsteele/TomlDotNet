@@ -13,7 +13,8 @@ namespace TomlDotNet.Tests
     public record Nested(Inner I);
     public record Inner(long L);
 
-    public record ArrayHolder(List<object> A);
+    public record HeteroArray(List<object> A);
+    public record HomoArray(List<long> L, List<bool> B);
 
     public record Conv(long L, int I, uint UI, ulong UL, double LtoD, float LtoF, double D, float F);
 
