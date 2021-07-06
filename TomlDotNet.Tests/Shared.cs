@@ -10,6 +10,9 @@ using System.Threading.Tasks;
 namespace TomlDotNet.Tests
 {
     public record Data(long L, double D, string S, bool B);
+
+    public record Many(long L, int I, uint UI, short Sh, ushort US, byte By, double D, float F, string S, bool B);
+
     public record Nested(Inner I);
     public record Inner(long L);
 

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Reflection;
+using System.Collections;
 
 using Tomlet.Models;
 
@@ -60,7 +61,7 @@ namespace TomlDotNet
                 if (tomlValue is not null)
                     tt.PutValue(p.Name, tomlValue);
                 else
-                    RecordToToml(obj, p.ParameterType);
+                    tt.PutValue( p.Name, RecordToToml(obj, p.ParameterType));
             }
             return tt;
         }
@@ -73,8 +74,25 @@ namespace TomlDotNet
             string s => new TomlString(s),
             DateTime dt => new TomlLocalDateTime(dt),
             DateTimeOffset dto => new TomlOffsetDateTime(dto),
-            _ => throw new InvalidOperationException($"No known conversion from {data.GetType()} to Toml"),
+            IEnumerable e => MakeTomlArray(e),
+            _ => null // TomlTable
         };
+
+        private static TomlArray MakeTomlArray(IEnumerable e)
+        {
+            if (e.GetType().GenericTypeArguments.Length == 0) throw new InvalidOperationException("Unable to convert enumerbale to tomlarray");
+
+            var listType = typeof(List<>);
+            var elementType = e.GetType().GenericTypeArguments[0]; // for heterog this might be 'object'
+            var constructedListType = listType.MakeGenericType(elementType);
+
+            List<TomlValue> tomlValues = (from object el in e select ToTomlBase(el)).ToList();
+            var a = new TomlArray();
+            var p = typeof(TomlArray).GetField("ArrayValues");
+            p.SetValue(a, tomlValues);  // jenky, but I can't find any other way to corectly construct a TomlArray
+
+            return a;
+        }
 
         /// <summary>
         /// Returns the object returned by src.propName's 'getter'
