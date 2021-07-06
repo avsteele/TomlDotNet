@@ -21,6 +21,9 @@ namespace TomlDotNet.Tests
     public record ArrayOfTables(List<TableElement> A);
     public record TableElement(long L, bool B);
 
+    public record ArrayOfTables2(List<TableElement2> A);
+    public record TableElement2(long L, bool B, string S, double D, List<double> LD);
+
     public record Conv(long L, int I, uint UI, ulong UL, double LtoD, float LtoF, double D, float F);
 
     public record DatesTimes(DateTime DT, DateTime DTUtc, DateTimeOffset Dto);

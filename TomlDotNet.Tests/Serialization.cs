@@ -25,7 +25,6 @@ namespace TomlDotNet.Tests
             var dOut = Deserialize.FromFile<Data>(filename);
 
             Assert.IsTrue(dIn == dOut);
-            ;
         }
 
         [TestMethod]
@@ -80,6 +79,30 @@ namespace TomlDotNet.Tests
             var dOut = Deserialize.FromFile<HomoArray>(filename);// fails, writes empty tables insytead of arrays
             Assert.IsTrue(dIn.L[1] == dOut.L[1]);
             Assert.IsTrue(dIn.B[1] == dOut.B[1]);
+        }
+
+        [TestMethod]
+        public void ArrayOfTablesTest()
+        {
+            ArrayOfTables dIn = new(new() { new(5, true), new(6, false), new(7, true) });
+            var fileName = @"SerializeArrayofTables.toml";
+            Serialize.RecordToTomlFile(dIn, fileName);
+
+            var dOut = Deserialize.FromFile<ArrayOfTables>(fileName);
+        }
+
+        [TestMethod]
+        public void ArrayOfTablesHarderTest()
+        {
+            ArrayOfTables2 dIn = new(new() 
+            { 
+                new(5,true,"hi",7.7, new() { 1.1,2.2,3.3}) , 
+                new(6, true, "hi2", 8.8, new() { 4.1, 5.2, 6.3 }) 
+            });
+            var fileName = @"SerializeArrayofTables2.toml";
+            Serialize.RecordToTomlFile(dIn, fileName);
+
+            var dOut = Deserialize.FromFile<ArrayOfTables2>(fileName);
         }
     }
 }

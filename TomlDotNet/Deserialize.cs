@@ -141,7 +141,6 @@ namespace TomlDotNet
             _ => throw new InvalidOperationException("Only defined for single-value types"),
         };
 
-
         /// <summary>
         /// Build toType 
         /// </summary>
@@ -150,8 +149,6 @@ namespace TomlDotNet
         /// <returns></returns>
         private static object BuildFromArray(TomlArray fromToml, Type toType)
         {
-            //if (toType.Name == "List`1") return TryMakeHomogeneous(from, toType.GenericTypeArguments[0]);
-
             /// 1) find a constructor on ToType with an single enumerable <T> parmeter, wher T is toType.GenericTypeParameter[0]
             /// 2) construct an empty List<T>
             /// 3) convert each element of the TomlArray to type T, then add each to the List<T>

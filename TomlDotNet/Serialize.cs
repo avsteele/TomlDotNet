@@ -46,7 +46,7 @@ namespace TomlDotNet
             if (data is null) throw new ArgumentNullException(nameof(data));
             var tt = new Tomlet.Models.TomlTable();
 
-            //iterate over constructor
+            //iterate over constructor's parameters
             var constructor = SelectConstructor(t);
             var param_list = constructor.GetParameters();
 
@@ -57,16 +57,17 @@ namespace TomlDotNet
                 if (p.Name is null) throw new InvalidOperationException($"Constructor parameter name {p.Name} is null?");
                 var obj = GetPropValue(data, p.Name);
                 if (obj is null) throw new InvalidOperationException($"Unexpected property {p.Name}'s value not found on object");
-                var tomlValue = ToTomlBase(obj);
-                if (tomlValue is not null)
-                    tt.PutValue(p.Name, tomlValue);
-                else
-                    tt.PutValue( p.Name, RecordToToml(obj, p.ParameterType));
+                var tomlValue = ToTomlBase(obj, p.ParameterType);
+                tt.PutValue(p.Name, tomlValue);
+                //if (tomlValue is not null)
+                //    tt.PutValue(p.Name, tomlValue);
+                //else
+                //    tt.PutValue(p.Name, RecordToToml(obj, p.ParameterType));
             }
             return tt;
         }
 
-        private static TomlValue? ToTomlBase(object data) => data switch
+        private static TomlValue ToTomlBase(object data, Type targetType) => data switch
         {
             bool b => TomlBoolean.ValueOf(b),
             double _ or float _ => new TomlDouble(Convert.ToDouble(data)),
@@ -74,11 +75,17 @@ namespace TomlDotNet
             string s => new TomlString(s),
             DateTime dt => new TomlLocalDateTime(dt),
             DateTimeOffset dto => new TomlOffsetDateTime(dto),
-            IEnumerable e => MakeTomlArray(e),
-            _ => null // TomlTable
+            IEnumerable e => MakeTomlArray(e, targetType),
+            _ => RecordToToml(data, targetType) // anything else we try to make a table out of
         };
 
-        private static TomlArray MakeTomlArray(IEnumerable e)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="e"></param>
+        /// <param name="targetType">use only in the case that we have an array of records</param>
+        /// <returns></returns>
+        private static TomlArray MakeTomlArray(IEnumerable e, Type targetType)
         {
             if (e.GetType().GenericTypeArguments.Length == 0) throw new InvalidOperationException("Unable to convert enumerbale to tomlarray");
 
@@ -86,10 +93,17 @@ namespace TomlDotNet
             var elementType = e.GetType().GenericTypeArguments[0]; // for heterog this might be 'object'
             var constructedListType = listType.MakeGenericType(elementType);
 
-            List<TomlValue> tomlValues = (from object el in e select ToTomlBase(el)).ToList();
+            List<TomlValue> tomlValues = (from object el in e select ToTomlBase(el, elementType)).ToList();
             var a = new TomlArray();
+            
             var p = typeof(TomlArray).GetField("ArrayValues");
-            p.SetValue(a, tomlValues);  // jenky, but I can't find any other way to corectly construct a TomlArray
+            p?.SetValue(a, tomlValues);  // jenky, but I can't find any other way to corectly construct a TomlArray
+
+            if(tomlValues.Count>0 && tomlValues[0] is TomlTable)
+            {
+                var pIsTable = typeof(TomlArray).GetField("IsTableArray", BindingFlags.NonPublic| BindingFlags.Instance);
+                pIsTable?.SetValue(a, true);
+            }
 
             return a;
         }
