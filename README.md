@@ -63,19 +63,41 @@ Deserialize.Conversions.Add((typeof(double), typeof(float)), (d) => Convert.ToSi
 var cOut = TomlDotNet.Deserialize.FromFile<Conv>("Conversions.toml"); 
 ```
 
+### Optional Fields
+
+```TOML
+# in optional.toml
+L = 5
+D = 6.6
+```
+
+```csharp
+public record Optional( long L, double D, string S="hi", bool B = true);
+
+// we can construct an 'Optional' record even if the TOML is missing a field as 
+//    long as that field is optional
+var cOut = TomlDotNet.Deserialize.FromFile<Optional>("Optional.toml");
+```
+
+Many additional examples of usage can be found in the included test package (`TomlDotNet.Tests`)
+
 ## Methods / Why
 
-Records are map quite well to toml/configuration data.  
-By using the the toml data to populate the parameters of a constructor we can 
-ensure a well constructed object and can deserialize (and serialize in cases where 
-we are working with of plain-old-data) without exposing fields or properties of 
-our objects publicly.  The default immutability of records is also a good fit for 
-representation of on-disk toml data.
+C# Records map quite well to TOML data. By using the the TOML data to populate the parameters of a constructor we can ensure a well constructed object. 
+
+One key improvement in this method is that we  can deserialize without exposing public fields or properties of our objects. The default immutability of records is also a good fit for representation of on-disk toml data.
+
+Serialization is less straightforward, but if you use default-constructed records
+
+<https://docs.microsoft.com/en-us/dotnet/csharp/whats-new/tutorials/records>
 
 ## TODO
 
 - [X] Basic De-serialization from TOML file to C# record
 - [X] Basic Serialization from TOML file to a C# record
-- [X] Basic type conversions
-- [ ] Refinements to conversion API
-- [ ] Constructor selection
+- [X] Basic type conversions (ie import TOML (I64) to C# Int etc...)
+- [X] Constructor selection
+- [X] Optional TOML toml fields
+- [X] Array of Tables support
+- [ ] Inline Array of tables support
+- [X] Conversion from Toml Tables to any type with an `IEnumerable` constructor
