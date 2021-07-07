@@ -30,10 +30,21 @@ namespace TomlDotNet.Tests
         [TestMethod]
         public void Exclude()
         {
-            throw new NotImplementedException();
+            Exclusion dIn = new(5L, true, "hi");
+            var filename = @"Exclusion.toml";
+            Serialize.RecordToTomlFile(dIn, filename);
+
+            // shoudl throw
+            try
+            {
+                var dOut = Deserialize.FromFile<Exclusion>(filename);
+
+            } catch (InvalidOperationException) { return; }
+            throw new Exception("did not throw as expected");
+            //Assert.IsTrue(dIn == dOut);
         }
 
-        public record Exclusion([field:NonSerialized] long L);
+        public record Exclusion([field:NonSerialized] long L, bool B, string S);
 
 
         [TestMethod]

@@ -52,6 +52,7 @@ namespace TomlDotNet
 
             foreach (var p in param_list)
             {
+                if (IsNonSerialized(t, p)) continue;
                 if (p.ParameterType.Equals(t))
                     throw new InvalidOperationException("Cannot serialize types with constructors containing an parameter of thier own type");
                 if (p.Name is null) throw new InvalidOperationException($"Constructor parameter name {p.Name} is null?");
@@ -65,6 +66,16 @@ namespace TomlDotNet
                 //    tt.PutValue(p.Name, RecordToToml(obj, p.ParameterType));
             }
             return tt;
+        }
+
+        public static bool IsNonSerialized(Type t, ParameterInfo p)
+        {
+            var name = p.Name;
+            // get the backing field
+            var f = t.GetField($"<{p.Name}>k__BackingField", BindingFlags.NonPublic| BindingFlags.Instance);
+            if (f is null) throw new InvalidOperationException($"backing field for property {p.Name} not found");
+            if ((from a in f.CustomAttributes where a.AttributeType == typeof(NonSerializedAttribute) select 1).Any()) return true;
+            return false;
         }
 
         private static TomlValue ToTomlBase(object data, Type targetType) => data switch
