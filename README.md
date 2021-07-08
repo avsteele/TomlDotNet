@@ -1,6 +1,6 @@
 # TomlDotNet
 
-Simple serialization of CLR records to TOML and the reverse. Uses TOMLET (https://github.com/SamboyCoding/Tomlet) to parse TOML.
+Simple serialization of C# records to TOML and the reverse. Uses TOMLET (https://github.com/SamboyCoding/Tomlet) to parse TOML.
 
 WARNING: this works, but is a work-in-progress. The API may change at any time.
 

@@ -3,6 +3,14 @@
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
     <Nullable>enable</Nullable>
+    <Version>0.3.0</Version>
+    <Authors>Adam V Steele</Authors>
+    <Company>ZeroK NanoTech</Company>
+    <Description>Simple deserialization of TOML to C# records and the reverse. Uses TOMLET (https://github.com/SamboyCoding/Tomlet) to parse TOML.  WARNING: this works, but is a work-in-progress. The API may change at any time.</Description>
+    <RepositoryUrl>https://github.com/avsteele/TomlDotNet</RepositoryUrl>
+    <PackageTags>TOML</PackageTags>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <Copyright>Adam V Steele</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
