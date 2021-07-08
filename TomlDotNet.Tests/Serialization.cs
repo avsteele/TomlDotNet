@@ -39,7 +39,7 @@ namespace TomlDotNet.Tests
             {
                 var dOut = Deserialize.FromFile<Exclusion>(filename);
 
-            } catch (InvalidOperationException) { return; }
+            } catch (AggregateException) { return; }
             throw new Exception("did not throw as expected");
             //Assert.IsTrue(dIn == dOut);
         }

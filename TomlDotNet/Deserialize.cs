@@ -67,13 +67,17 @@ namespace TomlDotNet
 
         private static object FromToml(TomlTable tt, Type t)
         {
+            List<Exception> exs = new();
             foreach(var c in ConstructorTryOrder(t,tt))
             {
                 try
                 { return FromToml(tt, t, c); }
-                catch {}
+                catch (Exception e) 
+                { 
+                    exs.Add( new InvalidOperationException($"Construction with {c} failed -> {e.Message}")); 
+                }
             }
-            throw new InvalidOperationException($"No valid constructor found able to convert Toml to type {t}");
+            throw new AggregateException("No constructors compatible with Toml data found", exs);
         }
 
         public static object FromToml(TomlTable tt, Type t, ConstructorInfo c)
@@ -115,8 +119,15 @@ namespace TomlDotNet
                 null => throw new ArgumentNullException(nameof(from)),
                 TomlArray a => BuildFromArray(a,toType),
                 TomlTable t => FromToml(t, toType),
-                // rest should be singletons
-                _ => DoConversion(ExtractValue(from), toType), //throw new NotImplementedException(type.ToString()),
+                // special case for parsing string to enums
+                TomlString s when toType.IsEnum => 
+                    Enum.TryParse(toType, s.Value, out object? o) switch
+                    {
+                        true => o!,
+                        false => throw new FormatException($"Unable to parse {s.Value} as Enum {toType.Name}")
+                    },
+                // rest should be singletons, require compatibility with toType or a valid conversion
+                _ => DoConversion(ExtractValue(from), toType),
             };
 
         private static object DoConversion(object o, Type type)

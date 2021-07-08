@@ -52,4 +52,7 @@ namespace TomlDotNet.Tests
     }
 
     public record AllOptional(long L = 0, double D = 0.0, string S = "opt");
+
+    public enum Test { Yes, No, Maybe }
+    public record EnumTypes( Test One, Test Two, Test Three);
 }

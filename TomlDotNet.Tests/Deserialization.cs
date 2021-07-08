@@ -276,6 +276,30 @@ namespace TomlDotNet.Tests
             var dOut = Deserialize.FromFile<ArrayOfTables>(fname);
             ;
         }
+        
+        [TestMethod]
+        public void FromEnum()
+        {
+            var dIn = new EnumTypes(Test.Yes, Test.No, Test.Maybe);
+            string fname = "Enum.toml";
+            var dOut = Deserialize.FromFile<EnumTypes>(fname);
+            Assert.IsTrue(dIn == dOut);
+            
+            try
+            {
+                var fname2 = "EnumError.toml";
+                var dOut2 = Deserialize.FromFile<EnumTypes>(fname2);
+                
+            }
+            catch (AggregateException ex) 
+            {
+                // expected
+                foreach (var e in ex.InnerExceptions) 
+                    Console.WriteLine(e);
+                return;
+            }
+            throw new Exception("Should have thrown");
+        }
 
     }
 }
