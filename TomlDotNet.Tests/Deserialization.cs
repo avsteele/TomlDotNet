@@ -195,6 +195,15 @@ namespace TomlDotNet.Tests
         }
 
         [TestMethod]
+        public void OptionalAll()
+        {
+            AllOptional cIn = new();
+            var cOut = Deserialize.FromFile<AllOptional>("AllOptional.toml");
+            Assert.IsTrue(cIn == cOut);
+            ;
+        }
+
+        [TestMethod]
         public void HomoArrayTest()
         {
             var r = new HomoArray(new() { 5L, 6L, 7L }, new List<bool>() { true, false, true });
@@ -267,5 +276,6 @@ namespace TomlDotNet.Tests
             var dOut = Deserialize.FromFile<ArrayOfTables>(fname);
             ;
         }
+
     }
 }

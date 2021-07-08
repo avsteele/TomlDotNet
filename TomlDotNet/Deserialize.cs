@@ -44,9 +44,8 @@ namespace TomlDotNet
         /// <summary>
         /// Constructs an instance of type T from the contents of the TOML file filePath
         /// </summary>
-        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="T">class constraint required because value types can always be default constructed (they match any toml file.)</typeparam>
         /// <param name="filePath">realtive or absolute path to a TOML file</param>
-        /// <param name="allowNullFillIfMissing"></param>
         /// <returns></returns>
         public static T FromFile<T>(string filePath) where T : class
             => FromString<T>(System.IO.File.ReadAllText(filePath));
@@ -54,9 +53,8 @@ namespace TomlDotNet
         /// <summary>
         /// As FromFile, but the TOML file contents are passed directly as a string
         /// </summary>
-        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="T">See Fromfile</typeparam>
         /// <param name="tomlFileContents"></param>
-        /// <param name="allowNullFillIfMissing"></param>
         /// <returns></returns>
         public static T FromString<T>(string tomlFileContents) where T : class
         {

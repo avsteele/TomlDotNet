@@ -50,4 +50,6 @@ namespace TomlDotNet.Tests
         public Optional(long L, double D, string S, bool B, string S2) 
             : this(L, D, S, B) { throw new Exception("Shouldn't be called"); }
     }
+
+    public record AllOptional(long L = 0, double D = 0.0, string S = "opt");
 }
