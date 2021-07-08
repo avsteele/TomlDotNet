@@ -34,9 +34,6 @@ namespace TomlDotNet.Tests
             Assert.IsTrue((dIn.L == 5) && (dIn.D == 0.123) && (dIn.S=="hello") && (dIn.B == true));
         }
 
-
-
-
         public bool SameList<T>(List<T> l1, List<T> l2) where T : IComparable
             => (from el in l1.Zip(l2) where el.First.CompareTo(el.Second) == 0 select 0).Any();
 
@@ -104,12 +101,8 @@ namespace TomlDotNet.Tests
             tt.Put("D", cIn.D); // inserted as TomlDouble : NO CONVERSION
             tt.Put("F", cIn.F); // inserted as TomlDouble : needs double=>float
 
-            Deserialize.Conversions.Add((typeof(long), typeof(int)), (i) => Convert.ToInt32((long)i));
-            Deserialize.Conversions.Add((typeof(long), typeof(uint)), (i) => Convert.ToUInt32((long)i));
-            Deserialize.Conversions.Add((typeof(long), typeof(ulong)), (i) => Convert.ToUInt64((long)i));
-            Deserialize.Conversions.Add((typeof(long), typeof(float)), (i) => Convert.ToSingle((long)i));
-            Deserialize.Conversions.Add((typeof(long), typeof(double)), (i) => Convert.ToDouble((long)i));
-            Deserialize.Conversions.Add((typeof(double), typeof(float)), (d) => Convert.ToSingle((double)d));
+            Deserialize.Conversions.Clear();
+            Deserialize.AddNumericConversions();
 
             var cOut = Deserialize.FromToml<Conv>(tt); // attempt extaction full clas data, requires conversions
             Assert.IsTrue(cIn == cOut);
@@ -118,21 +111,13 @@ namespace TomlDotNet.Tests
         [TestMethod]
         public void ConvertersFromFile()
         {
-            //     public record Conv(long L, int I, uint UI, ulong UL, double LtoD, float LtoF, double D, float F);
-
             Deserialize.Conversions.Clear();
-            Deserialize.Conversions.Add((typeof(long), typeof(int)), (i) => Convert.ToInt32((long)i));
-            Deserialize.Conversions.Add((typeof(long), typeof(uint)), (i) => Convert.ToUInt32((long)i));
-            Deserialize.Conversions.Add((typeof(long), typeof(ulong)), (i) => Convert.ToUInt64((long)i));
-            Deserialize.Conversions.Add((typeof(long), typeof(float)), (i) => Convert.ToSingle((long)i));
-            Deserialize.Conversions.Add((typeof(long), typeof(double)), (i) => Convert.ToDouble((long)i));
-            Deserialize.Conversions.Add((typeof(double), typeof(float)), (d) => Convert.ToSingle((double)d));
+            Deserialize.AddNumericConversions();
 
             var cOut = TomlDotNet.Deserialize.FromFile<Conv>("Conversions.toml"); // attempt extaction full clas data, requires conversions
             Assert.IsTrue(cOut.UL == 8);
             ;
         }
-
 
         [TestMethod]
         public void NestedTypes()

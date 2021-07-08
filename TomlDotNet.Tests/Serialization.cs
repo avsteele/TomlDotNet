@@ -68,12 +68,8 @@ namespace TomlDotNet.Tests
             System.IO.File.WriteAllText(filename, s);
 
             /// conversion sused when deserializing back from file
-            Deserialize.Conversions.Add((typeof(long), typeof(int)), (i) => Convert.ToInt32((long)i));
-            Deserialize.Conversions.Add((typeof(long), typeof(uint)), (i) => Convert.ToUInt32((long)i));
-            Deserialize.Conversions.Add((typeof(long), typeof(short)), (i) => Convert.ToInt16((long)i));
-            Deserialize.Conversions.Add((typeof(long), typeof(ushort)), (i) => Convert.ToUInt16((long)i));
-            Deserialize.Conversions.Add((typeof(long), typeof(byte)), (i) => Convert.ToByte((long)i));
-            Deserialize.Conversions.Add((typeof(double), typeof(float)), (d) => Convert.ToSingle((double)d));
+            Deserialize.Conversions.Clear();
+            Deserialize.AddNumericConversions();
 
             var dOut = Deserialize.FromFile<Many>(filename);
             Assert.IsTrue(dIn == dOut);

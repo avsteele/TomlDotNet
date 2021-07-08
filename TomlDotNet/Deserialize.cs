@@ -37,6 +37,20 @@ namespace TomlDotNet
 
         }
 
+        public static void AddNumericConversions()
+        {
+            /// these are ok 99% of the time
+            Deserialize.Conversions.Add((typeof(long), typeof(ulong)), (i) => Convert.ToUInt64((long)i));
+            Deserialize.Conversions.Add((typeof(long), typeof(int)), (i) => Convert.ToInt32((long)i));
+            Deserialize.Conversions.Add((typeof(long), typeof(uint)), (i) => Convert.ToUInt32((long)i));
+            Deserialize.Conversions.Add((typeof(long), typeof(short)), (i) => Convert.ToInt16((long)i));
+            Deserialize.Conversions.Add((typeof(long), typeof(ushort)), (i) => Convert.ToUInt16((long)i));
+            Deserialize.Conversions.Add((typeof(long), typeof(byte)), (i) => Convert.ToByte((long)i));
+            Deserialize.Conversions.Add((typeof(long), typeof(float)), (i) => Convert.ToSingle((long)i));
+            Deserialize.Conversions.Add((typeof(long), typeof(double)), (i) => Convert.ToDouble((long)i));
+            Deserialize.Conversions.Add((typeof(double), typeof(float)), (d) => Convert.ToSingle((double)d));
+        }
+
         private static Dictionary<(Type from, Type to), Func<object, object>> BuiltInConversions { get; set; } = new();
 
         public static Dictionary<(Type from, Type to), Func<object, object>> Conversions { get; private set; } = new();
