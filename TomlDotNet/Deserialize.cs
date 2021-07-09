@@ -172,49 +172,97 @@ namespace TomlDotNet
         /// <returns></returns>
         private static object BuildFromArray(TomlArray fromToml, Type toType)
         {
-            /// 1) find a constructor on ToType with an single enumerable <T> parmeter, wher T is toType.GenericTypeParameter[0]
-            /// 2) construct an empty List<T>
-            /// 3) convert each element of the TomlArray to type T, then add each to the List<T>
+            // Method 1: Use constructor of some toType's  Name<T>(Iennumerable<T>)
+
+            /// 1) find any constructors on ToType with an single IEnumerable<T> parameter, 
+            /// 2) For each try to create an Iennumerable<T> from th TOMl array,
+            /// 3) attempt to construct object using the parameter list
             /// 4) use this list as an arg to the constructor from 1) above
-            
-            var c = BuildFromEnumerable(toType);
-            if (c is null) throw new InvalidOperationException("No constructor with ennumerable parameter");
 
-            var listType = typeof(List<>);
-            var elementType = toType.GenericTypeArguments[0]; // for heterog this might be 'object'
-            var constructedListType = listType.MakeGenericType(elementType);
-            //IEnumerable<object> prm = from el in fromToml select DoConversion(ExtractValue(el), elementType);
-            IEnumerable<object> prm = from el in fromToml select FromToml(el,elementType);
+            var possibles = PossibleConstructors(toType);
+            foreach( var (constructor, eleType) in possibles)
+            {
+                // try to asemble arg list, if it throws, try next
+                try
+                {
+                    var listType = typeof(List<>);
+                    // for heterog this might be 'object'. Will also throw if the class has no generic type arg
+                    //var elementType = toType.GenericTypeArguments[0];
+                    var constructedListType = listType.MakeGenericType(eleType);
 
-            // can't figure out how to construct the list directly from prm
-            var instance = (System.Collections.IList)Activator.CreateInstance(constructedListType);
-            if (instance is null) throw new InvalidOperationException($"Failed to construct List<{elementType}> to construct {toType}");
-            foreach( var p in prm)
-                instance.Add(p);
+                    IEnumerable<object> prm = from el in fromToml select FromToml(el, eleType);
 
-            return c.Invoke(new object[] { instance });
+                    var instance = (System.Collections.IList)Activator.CreateInstance(constructedListType)!;
+                    if (instance is null) throw new InvalidOperationException($"Failed to construct List<{eleType}> to construct {toType}");
+                    foreach (var p in prm)
+                        instance.Add(p); // will throw if instance does not support type of the enumerator
+                    return constructor.Invoke(new object[] { instance });
+                }
+                catch { }
+            }
+
+
+            foreach(var (converter, eleType) in PossibleConverters(toType))
+            {
+                try
+                {
+                    var listType = typeof(List<>);
+                    // for heterog this might be 'object'. Will also throw if the class has no generic type arg
+                    //var elementType = toType.GenericTypeArguments[0];
+                    var constructedListType = listType.MakeGenericType(eleType);
+
+                    IEnumerable<object> prm = from el in fromToml select FromToml(el, eleType);
+
+                    var instance = (System.Collections.IList)Activator.CreateInstance(constructedListType)!;
+                    if (instance is null) throw new InvalidOperationException($"Failed to construct List<{eleType}> to construct {toType}");
+                    foreach (var p in prm)
+                        instance.Add(p); // will throw if instance does not support type of the enumerator
+
+                    return converter(instance);
+                }
+                catch { }
+            }
+            // now try a converter
+            //var f = ConvertFromEnumerable(toType, elementType);
+            //if (f is not null) return f(prm);
+
+            throw new InvalidOperationException($"No constructor on type {toType} with 1 Enumerable<T> parameter, and no Conveter from IEnnumerable <T> found");
+            /// converter way
+            //var conv = ConvertFromEnumerable(toType);
         }
 
-        /// <summary>
-        /// Looks for a consttructor taking an Ennumerable<T> where T is the 
-        /// single GenericTypeArgument of Type t (the parameter)
-        /// </summary>
-        /// <param name="t"></param>
-        /// <returns></returns>
-        public static ConstructorInfo? BuildFromEnumerable(Type t)
-        {
-            if (t.GenericTypeArguments.Length != 1) return null;
-            var enumType = typeof(IEnumerable<>);
-            var constructedEnumType = enumType.MakeGenericType(t.GenericTypeArguments[0]);
+        public static Type? IsIEnumerable(Type t)
+            => (t.Name == "IEnumerable`1" && t.GenericTypeArguments.Length == 1) ? t.GenericTypeArguments[0] : null;
 
-            var cs = t.GetConstructors();
-            foreach(var c in cs)
+        private static List<(ConstructorInfo constructor, Type elementType)> PossibleConstructors(Type t)
+        {
+            List <(ConstructorInfo constructor, Type elementType)> L = new();
+            foreach(var c in t.GetConstructors())
             {
                 ParameterInfo[] ps = c.GetParameters();
                 if (ps.Length != 1) continue;
-                if (ps[0].ParameterType == constructedEnumType) return c;
+                var elementType = IsIEnumerable(ps[0].ParameterType);
+                if (elementType is not null) L.Add((constructor: c, elementType));
             }
-            return null; //so suitable constructire found
+            return L;
+        }
+
+        /// <summary>
+        /// Looks in teh conversions list for one that can take an IEnumerable<T> and return toType
+        /// </summary>
+        /// <param name="toType"></param>
+        /// <returns></returns>
+        private static List<(Func<object,object> converter, Type elementType)> PossibleConverters(Type toType)
+        {
+            List<(Func<object, object> converter, Type elementType)> @out = new();
+            foreach (var (key, value) in Conversions)
+            {
+                if (!toType.IsAssignableFrom(key.to)) continue;
+                var eleType = IsIEnumerable(key.from);
+                if (eleType is null) continue;
+                @out.Add((converter:value, elementType:eleType));
+            }
+            return @out;
         }
 
         /// <summary>

@@ -34,9 +34,6 @@ namespace TomlDotNet.Tests
             Assert.IsTrue((dIn.L == 5) && (dIn.D == 0.123) && (dIn.S=="hello") && (dIn.B == true));
         }
 
-        public bool SameList<T>(List<T> l1, List<T> l2) where T : IComparable
-            => (from el in l1.Zip(l2) where el.First.CompareTo(el.Second) == 0 select 0).Any();
-
         /// <summary>
         /// Test whether Datetime types can be put into toml form and then rad back into a CLR record
         /// Datetimes are serialized without an offset at the end, and without respect to the 'Kind' field. therefore
@@ -107,6 +104,9 @@ namespace TomlDotNet.Tests
             var cOut = Deserialize.FromToml<Conv>(tt); // attempt extaction full clas data, requires conversions
             Assert.IsTrue(cIn == cOut);
         }
+        public static bool Same<T>(IEnumerable<T> l1, IEnumerable<T> l2) where T : IEquatable<T>
+            => (from el in l1.Zip(l2) where el.First.Equals(el.Second) select 0).Any();
+
 
         [TestMethod]
         public void ConvertersFromFile()
@@ -191,24 +191,27 @@ namespace TomlDotNet.Tests
         [TestMethod]
         public void HomoArrayTest()
         {
-            var r = new HomoArray(new() { 5L, 6L, 7L }, new List<bool>() { true, false, true });
             Deserialize.Conversions.Clear();
+            Deserialize.AddNumericConversions();
+
+            var r = new HomoArray(new() { 5L, 6L, 7L }, new List<bool>() { true, false, true }, new() { 8, 9, 10 });
             var L = new Tomlet.Models.TomlArray()
             {
-                r.L[0],
-                r.L[1],
-                r.L[2]
+                r.L[0], r.L[1], r.L[2]
             };
             var B = new Tomlet.Models.TomlArray()
             {
-                r.B[0],
-                r.B[1],
-                r.B[2]
+                r.B[0], r.B[1], r.B[2]
+            };
+            var I = new TomlArray()
+            {
+                r.I[0], r.I[1], r.I[2]
             };
 
             var tt = Tomlet.Models.TomlDocument.CreateEmpty();
             tt.PutValue("L", L);
             tt.PutValue("B", B);
+            tt.PutValue("I", I);
             //var arr = TomlDotNet.Toml.ConvertArray(a);
             var s = tt.SerializedValue;
             string fname = "Array.toml";
@@ -259,7 +262,7 @@ namespace TomlDotNet.Tests
             var fname = "ArrayOfTables.toml";
             var tt = Tomlet.TomlParser.ParseFile(fname);
             var dOut = Deserialize.FromFile<ArrayOfTables>(fname);
-            ;
+            Assert.IsTrue(tt.GetArray("A").Count == dOut.A.Count);
         }
         
         [TestMethod]
@@ -283,6 +286,55 @@ namespace TomlDotNet.Tests
                     Console.WriteLine(e);
                 return;
             }
+            throw new Exception("Should have thrown");
+        }
+
+
+        public record ToVec2(Vector2 V);
+        [TestMethod]
+        public void ConvertIEnumerable()
+        {
+            Deserialize.Conversions.Clear();
+            Deserialize.AddNumericConversions();
+            Deserialize.Conversions.Add((from: typeof(IEnumerable<double>), to: typeof(Vector2)), (ie) => Vector2.Create((IEnumerable<double>)ie));
+
+            { // shuold pass
+                var V = new TomlArray()
+                {
+                    5.0, 6.0,
+                };
+
+                var tt = Tomlet.Models.TomlDocument.CreateEmpty();
+                tt.PutValue("V", V);
+
+                var v = Deserialize.FromToml<ToVec2>(tt);
+            }
+
+            { // should pass (but requires conversions fro mint->double
+                var V = new TomlArray()
+                {
+                    1, 2,
+                };
+
+                var tt = Tomlet.Models.TomlDocument.CreateEmpty();
+                tt.PutValue("V", V);
+
+                var v = Deserialize.FromToml<ToVec2>(tt);
+                Assert.IsTrue(((TomlLong)V[0]).Value == v.V.X && ((TomlLong)V[1]).Value == v.V.Y);
+            }
+
+            try 
+            {
+                var V = new TomlArray()
+                {
+                    5.0, 6.0, 7.0
+                };
+
+                var tt = Tomlet.Models.TomlDocument.CreateEmpty();
+                tt.PutValue("V", V);
+                var v = Deserialize.FromToml<ToVec2>(tt);
+            }
+            catch (AggregateException) { return; }
             throw new Exception("Should have thrown");
         }
 

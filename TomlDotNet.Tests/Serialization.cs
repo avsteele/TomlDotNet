@@ -79,7 +79,7 @@ namespace TomlDotNet.Tests
         [TestMethod]
         public void Array()
         {
-            HomoArray dIn = new(new() { 5L, 6L, 7L }, new() { true, false, true });
+            HomoArray dIn = new(new() { 5L, 6L, 7L }, new() { true, false, true }, new() { 8, 9, 10 });
             var filename = @"serializeArray.toml";
             Serialize.RecordToTomlFile(dIn, filename);
 
@@ -96,6 +96,7 @@ namespace TomlDotNet.Tests
             Serialize.RecordToTomlFile(dIn, fileName);
 
             var dOut = Deserialize.FromFile<ArrayOfTables>(fileName);
+            Assert.IsTrue(Deserialization.Same(dIn.A, dOut.A));
         }
 
         [TestMethod]
@@ -110,7 +111,7 @@ namespace TomlDotNet.Tests
             Serialize.RecordToTomlFile(dIn, fileName);
 
             var dOut = Deserialize.FromFile<ArrayOfTables2>(fileName);
-            ;
+            //Assert.IsTrue(Deserialization.Same(dIn.A, dOut.A));
         }
     }
 }

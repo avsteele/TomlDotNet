@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+#pragma warning disable IDE0060 // Remove unused parameter
 /// <summary>
 /// Many records here use in tests via reflection. No not remove them just because static analysis says theya re unused
 /// </summary>
@@ -17,7 +18,7 @@ namespace TomlDotNet.Tests
     public record Inner(long L);
 
     public record HeteroArray(List<object> A);
-    public record HomoArray(List<long> L, List<bool> B);
+    public record HomoArray(List<long> L, List<bool> B, List<int> I);
     public record ArrayOfTables(List<TableElement> A);
     public record TableElement(long L, bool B);
 
@@ -38,7 +39,9 @@ namespace TomlDotNet.Tests
     {
         //public ManyConstructors() { }
         static ManyConstructors() { } //should be filtered (is static)
-        private ManyConstructors(int z, int y, int x) { } //should be filterd(is private)
+#pragma warning disable IDE0051 // Remove unused private members
+        private ManyConstructors(int z, int y, int x) { } //should be filtered (is private)
+#pragma warning restore IDE0051 // Remove unused private members
         public ManyConstructors(int i, int j, int k, int l, int m, int n, int o, int p, int q) { } //should be filtered, # req params to large
         public ManyConstructors(int i) { }
         public ManyConstructors(int i, string s) { }
@@ -55,4 +58,20 @@ namespace TomlDotNet.Tests
 
     public enum Test { Yes, No, Maybe }
     public record EnumTypes( Test One, Test Two, Test Three);
+
+    public class Vector2
+    {
+        public double X { get; init; }
+        public double Y { get; init; }
+        static public Vector2 Create(IEnumerable<double> xy)
+        {
+            if (xy.Count() != 2) throw new ArgumentException("Requires exactly 2 elements", nameof(xy));
+            return new Vector2()
+            {
+                X = xy.First(),
+                Y = xy.Last(),
+            };
+        }
+        private Vector2() { }
+    }
 }

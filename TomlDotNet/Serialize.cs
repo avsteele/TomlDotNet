@@ -98,11 +98,12 @@ namespace TomlDotNet
         /// <returns></returns>
         private static TomlArray MakeTomlArray(IEnumerable e, Type targetType)
         {
-            if (e.GetType().GenericTypeArguments.Length == 0) throw new InvalidOperationException("Unable to convert enumerbale to tomlarray");
+            if (e.GetType().GenericTypeArguments.Length == 0) 
+                throw new InvalidOperationException("Unable to convert IEnumerable to tomlarray, missing generic type");
 
             var listType = typeof(List<>);
             var elementType = e.GetType().GenericTypeArguments[0]; // for heterog this might be 'object'
-            var constructedListType = listType.MakeGenericType(elementType);
+            //var constructedListType = listType.MakeGenericType(elementType);
 
             List<TomlValue> tomlValues = (from object el in e select ToTomlBase(el, elementType)).ToList();
             var a = new TomlArray();

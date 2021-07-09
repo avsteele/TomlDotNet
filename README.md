@@ -91,13 +91,14 @@ Serialization is less straightforward, but if you use default-constructed record
 
 <https://docs.microsoft.com/en-us/dotnet/csharp/whats-new/tutorials/records>
 
-## TODO
+## Features
 
 - [X] Basic De-serialization from TOML file to C# record
 - [X] Basic Serialization from TOML file to a C# record
 - [X] Basic type conversions (ie import TOML (I64) to C# Int etc...)
 - [X] Constructor selection
-- [X] Optional TOML toml fields
+- [X] Optional paramters for deserialization, optional TOML
 - [X] Array of Tables support
 - [ ] Inline Array of tables support
-- [X] Conversion from Toml Tables to any type with an `IEnumerable` constructor
+- [X] De-serialization from Toml Tables to any type with an `IEnumerable` constructor or converter ass to the dictionary
+- [ ] Serialization from IEnnumerbale object to a TomlArray
