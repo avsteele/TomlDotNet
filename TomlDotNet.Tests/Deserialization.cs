@@ -346,12 +346,23 @@ namespace TomlDotNet.Tests
             ;
         }
 
-        public class Vec2
+        [TestMethod]
+        public void ValueTypeTest()
         {
-            public double X;
-            public double Y;
-            public Vec2(double x, double y) { X = x; Y = y; }
+            Deserialize.Conversions.Clear();
+            Deserialize.AddNumericConversions();
+
+            System.Numerics.Vector3 cIn = new() ;// System.Numerics.Vector3(1f, 2f, 3f);
+            cIn.X = 1f; cIn.Y = 2f; cIn.Z = 3f;
+            Tomlet.Models.TomlTable tt = new();
+            tt.Put("X", cIn.X);
+            tt.Put("Y", cIn.Y);
+            tt.Put("Z", cIn.Z);
+
+            var cOut = Deserialize.FromToml<System.Numerics.Vector3>(tt);
+            Assert.IsTrue(cIn == cOut);
         }
-        public record ContainsVec2(Vec2 V);
+
+        public record ContainsVec2(System.Numerics.Vector2 V);
     }
 }

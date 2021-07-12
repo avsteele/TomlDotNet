@@ -18,7 +18,7 @@ namespace TomlDotNet.Tests
         {
             var dIn = new Data(5, 6.6, "hi", true);
 
-            var s = Serialize.RecordToTomlString(dIn);
+            var s = Serialize.ToToml(dIn);
             var filename = @"serializeBasic.toml";
             System.IO.File.WriteAllText(filename, s);
 
@@ -32,7 +32,7 @@ namespace TomlDotNet.Tests
         {
             Exclusion dIn = new(5L, true, "hi");
             var filename = @"Exclusion.toml";
-            Serialize.RecordToTomlFile(dIn, filename);
+            Serialize.ToToml(dIn, filename);
 
             // shoudl throw
             try
@@ -51,7 +51,7 @@ namespace TomlDotNet.Tests
         public void Nested()
         {
             Nested dIn = new(new(5L));
-            var s = Serialize.RecordToTomlString(dIn);
+            var s = Serialize.ToToml(dIn);
             var filename = @"serializeNested.toml";
             System.IO.File.WriteAllText(filename, s);
             var dOut = Deserialize.FromFile<Nested>(filename);
@@ -63,7 +63,7 @@ namespace TomlDotNet.Tests
         public void BasicAll()
         {
             Many dIn = new(5L, 6, 7, 8, 9, 255, 12.12, 15.12F, "hello", true);
-            var s = Serialize.RecordToTomlString(dIn);
+            var s = Serialize.ToToml(dIn);
             var filename = @"serializeMany.toml";
             System.IO.File.WriteAllText(filename, s);
 
@@ -81,7 +81,7 @@ namespace TomlDotNet.Tests
         {
             HomoArray dIn = new(new() { 5L, 6L, 7L }, new() { true, false, true }, new() { 8, 9, 10 });
             var filename = @"serializeArray.toml";
-            Serialize.RecordToTomlFile(dIn, filename);
+            Serialize.ToToml(dIn, filename);
 
             var dOut = Deserialize.FromFile<HomoArray>(filename);// fails, writes empty tables insytead of arrays
             Assert.IsTrue(dIn.L[1] == dOut.L[1]);
@@ -93,7 +93,7 @@ namespace TomlDotNet.Tests
         {
             ArrayOfTables dIn = new(new() { new(5, true), new(6, false), new(7, true) });
             var fileName = @"SerializeArrayofTables.toml";
-            Serialize.RecordToTomlFile(dIn, fileName);
+            Serialize.ToToml(dIn, fileName);
 
             var dOut = Deserialize.FromFile<ArrayOfTables>(fileName);
             Assert.IsTrue(Deserialization.Same(dIn.A, dOut.A));
@@ -108,10 +108,56 @@ namespace TomlDotNet.Tests
                 new(6, true, "hi2", 8.8, new() { 4.1, 5.2, 6.3 }) 
             });
             var fileName = @"SerializeArrayofTables2.toml";
-            Serialize.RecordToTomlFile(dIn, fileName);
+            Serialize.ToToml(dIn, fileName);
 
             var dOut = Deserialize.FromFile<ArrayOfTables2>(fileName);
+            // TODO: missing check for correctness
             //Assert.IsTrue(Deserialization.Same(dIn.A, dOut.A));
+        }
+
+
+        public struct TestProp
+        {
+            public double X { get; set; }
+            public double Y { get; }
+            public double Z { get; init; }
+        }
+
+        [TestMethod]
+        public void ValueType()
+        {
+            var fileName = @"SerializeValueType.toml";
+            var tp = new TestProp() { X = 5, Z = 8 };
+
+            Serialize.ToToml(tp, fileName);
+            //var tpIn = Deserialize.FromFile<TestProp>(fileName);
+            //Console.WriteLine(s);
+        }
+
+
+        public class TestField
+        {
+            public double X = 1;
+            public double Y { get; set; } = 2;
+            public double Z { get; } = 3;
+
+            [field: NonSerialized]
+            public double A { get; set; } = 4;
+            [NonSerialized]
+            public double B = 5;
+
+            public IEnumerable<double> C { get; init; } = new List<double>() { 9, 8, 7, 6 };
+        }
+        [TestMethod]
+        public void Field()
+        {
+            var fileName = @"SerializeField.toml";
+            var s = Serialize.ToToml(new System.Numerics.Vector2(3f,6f));
+            Console.WriteLine(s);
+
+            var s2 = Serialize.ToToml(new TestField());
+            Console.WriteLine(s2); // look correct
+            Serialize.ToToml(new TestField(), fileName);
         }
     }
 }

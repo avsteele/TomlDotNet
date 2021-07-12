@@ -26,6 +26,13 @@ var dIn = TomlDotNet.Deserialize.FromFile<Data>("Example.toml");
 Assert.IsTrue((dIn.L == 5) && (dIn.D == 0.123) && (dIn.S=="hello") && (dIn.B == true));
 ```
 
+### Serialization
+
+All properties public with  public `set` or `init` are serialized, unless the property has the `[field:NonSerialized]` attribute applied.
+
+Public Fields are serialized, unless the field has the `[NonSerialized]` attribute.
+
+
 ### Support for conversions
 
 ```TOML

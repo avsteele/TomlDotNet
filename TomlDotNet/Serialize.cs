@@ -18,9 +18,9 @@ namespace TomlDotNet
         /// <typeparam name="T"></typeparam>
         /// <param name="data"></param>
         /// <param name="filename"></param>
-        public static void RecordToTomlFile<T>(T data, string filename) where T : notnull
+        public static void ToToml<T>(T data, string filename) where T : notnull
         {
-            var str = RecordToTomlString(data);
+            var str = ToToml(data);
             System.IO.File.WriteAllText(filename, str);
         }
 
@@ -35,47 +35,81 @@ namespace TomlDotNet
         /// <typeparam name="T"></typeparam>
         /// <param name="data"></param>
         /// <returns></returns>
-        public static string RecordToTomlString<T>(T data) where T : notnull
+        public static string ToToml<T>(T data) where T : notnull
         {
-            var table = RecordToToml(data, typeof(T));
+            var table = ToToml(data as object);
             return table.SerializeNonInlineTable(null, false);
-        }
+        }        
 
-        private static TomlTable RecordToToml(object data, Type t)
+        private static TomlTable ToToml(object data)
         {
+            var type = data.GetType();
             if (data is null) throw new ArgumentNullException(nameof(data));
             var tt = new Tomlet.Models.TomlTable();
 
-            //iterate over constructor's parameters
-            var constructor = SelectConstructor(t);
-            var param_list = constructor.GetParameters();
-
-            foreach (var p in param_list)
+            var bindingFlags = BindingFlags.Public | BindingFlags.Instance;
+            foreach (var p in type.GetProperties(bindingFlags))
             {
-                if (IsNonSerialized(t, p)) continue;
-                if (p.ParameterType.Equals(t))
-                    throw new InvalidOperationException("Cannot serialize types with constructors containing an parameter of thier own type");
-                if (p.Name is null) throw new InvalidOperationException($"Constructor parameter name {p.Name} is null?");
-                var obj = GetPropValue(data, p.Name);
-                if (obj is null) throw new InvalidOperationException($"Unexpected property {p.Name}'s value not found on object");
-                var tomlValue = ToTomlBase(obj, p.ParameterType);
+                if (p.Name is null) throw new InvalidOperationException($"Property name {p.Name} is null?");
+                var obj = p.GetValue(data);
+                if (obj is null) throw new InvalidOperationException($"No property {p.Name} not found on type {type}");
+                // Property exists, but if it is marked non-serialize, we ignore it 
+                if (IsNonSerialized(type, p)) continue;
+                var (publicSet, isInitOnly) = CanSet(p);
+                if (!publicSet) continue;
+                var tomlValue = ToTomlBase(obj, p.PropertyType);
                 tt.PutValue(p.Name, tomlValue);
-                //if (tomlValue is not null)
-                //    tt.PutValue(p.Name, tomlValue);
-                //else
-                //    tt.PutValue(p.Name, RecordToToml(obj, p.ParameterType));
             }
+
+            foreach(var f in type.GetFields(bindingFlags))
+            {
+                if (f.IsNotSerialized) continue;
+                object? obj = f.GetValue(data);
+                if (obj is null) throw new InvalidOperationException($"value of field {f.Name} was null");
+                var tomlValue = ToTomlBase(obj, f.FieldType);
+                tt.PutValue(f.Name, tomlValue);
+            }
+
             return tt;
         }
 
-        public static bool IsNonSerialized(Type t, ParameterInfo p)
+        /// <summary>
+        /// returns whther the property has a public setter and whether that public setter is init-only.
+        /// </summary>
+        /// <param name="p"></param>
+        /// <returns></returns>
+        public static (bool publicSet, bool isInitOnly) CanSet(PropertyInfo p)
         {
-            var name = p.Name;
-            // get the backing field
-            var f = t.GetField($"<{p.Name}>k__BackingField", BindingFlags.NonPublic| BindingFlags.Instance);
-            if (f is null) throw new InvalidOperationException($"backing field for property {p.Name} not found");
+            //if (!p.CanWrite) return (false, false);
+            MethodInfo? setMethod = p.SetMethod;
+            if (setMethod is null) return (false, false);
+            // Get the modifiers applied to the return parameter.
+            var setMethodReturnParameterModifiers = setMethod.ReturnParameter.GetRequiredCustomModifiers();
+            // Init-only properties are marked with the IsExternalInit type.
+            return (true, setMethodReturnParameterModifiers.Contains(typeof(System.Runtime.CompilerServices.IsExternalInit)));
+        }
+
+        public static bool IsNonSerialized(Type t, ParameterInfo p)
+            => IsNonSerializedBase(t, p);
+
+        public static bool IsNonSerialized(Type t, PropertyInfo p)
+            => IsNonSerializedBase(t, p);
+
+        public static bool IsNonSerialized(FieldInfo f)
+        {
             if ((from a in f.CustomAttributes where a.AttributeType == typeof(NonSerializedAttribute) select 1).Any()) return true;
             return false;
+        }
+
+        public static bool IsNonSerializedBase(Type t, object p)
+        {
+            if (p is not ParameterInfo pi && p is not PropertyInfo) throw new ArgumentException(nameof(p), "Must be PropertyInfo for ParameterInfo");
+            string name = (p as ParameterInfo)?.Name ?? (p as MemberInfo)?.Name!;
+            string fieldName = $"<{name}>k__BackingField";
+            var f = t.GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Instance);
+            if (f is null) throw new InvalidOperationException($"Field {name} on type {t} not found");
+            // get the backing field
+            return IsNonSerialized(f);
         }
 
         private static TomlValue ToTomlBase(object data, Type targetType) => data switch
@@ -86,8 +120,8 @@ namespace TomlDotNet
             string s => new TomlString(s),
             DateTime dt => new TomlLocalDateTime(dt),
             DateTimeOffset dto => new TomlOffsetDateTime(dto),
-            IEnumerable e => MakeTomlArray(e, targetType),
-            _ => RecordToToml(data, targetType) // anything else we try to make a table out of
+            IEnumerable e => MakeTomlArray(e),
+            _ => ToToml(data)
         };
 
         /// <summary>
@@ -96,7 +130,7 @@ namespace TomlDotNet
         /// <param name="e"></param>
         /// <param name="targetType">use only in the case that we have an array of records</param>
         /// <returns></returns>
-        private static TomlArray MakeTomlArray(IEnumerable e, Type targetType)
+        private static TomlArray MakeTomlArray(IEnumerable e)
         {
             if (e.GetType().GenericTypeArguments.Length == 0) 
                 throw new InvalidOperationException("Unable to convert IEnumerable to tomlarray, missing generic type");
@@ -131,15 +165,5 @@ namespace TomlDotNet
             return src.GetType().GetProperty(propName)?.GetValue(src, null);
         }
 
-        /// <summary>
-        /// Selects a constructor on type t that is used for serialization.
-        /// Default behavior is to choose 1st one returned by Deserialize
-        /// </summary>
-        /// <param name="t"></param>
-        /// <returns></returns>
-        public static ConstructorInfo SelectConstructor(Type t)
-        {
-            return Deserialize.ConstructorTryOrder(t, null)[0];
-        }
     }
 }

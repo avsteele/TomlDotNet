@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Linq;
 using Tomlet.Models;
 using System.Collections.Generic;
+using System.Runtime.Serialization;
 
 
 namespace TomlDotNet
@@ -62,7 +63,7 @@ namespace TomlDotNet
         /// <typeparam name="T">class constraint required because value types can always be default constructed (they match any toml file.)</typeparam>
         /// <param name="filePath">realtive or absolute path to a TOML file</param>
         /// <returns></returns>
-        public static T FromFile<T>(string filePath) where T : class
+        public static T FromFile<T>(string filePath)
             => FromString<T>(System.IO.File.ReadAllText(filePath));
 
         /// <summary>
@@ -71,13 +72,13 @@ namespace TomlDotNet
         /// <typeparam name="T">See Fromfile</typeparam>
         /// <param name="tomlFileContents"></param>
         /// <returns></returns>
-        public static T FromString<T>(string tomlFileContents) where T : class
+        public static T FromString<T>(string tomlFileContents)
         {
             var parser = new Tomlet.TomlParser();
             return FromToml<T>(parser.Parse(tomlFileContents));
         }
 
-        public static T FromToml<T>(TomlTable tt) where T : class
+        public static T FromToml<T>(TomlTable tt)
             => (T)FromToml(tt, typeof(T));
 
         private static object FromToml(TomlTable tt, Type t)
@@ -86,11 +87,37 @@ namespace TomlDotNet
             foreach (var c in ConstructorTryOrder(t, tt))
             {
                 try
-                { return FromToml(tt, t, c); }
+                { 
+                    var @out = FromToml(tt, t, c);
+
+                    /// logic is that a properly constructed object 
+                    /// does not necessarily require its properties to be initialized, 
+                    /// this can alwasy be done in the constructor. We also don't 
+                    /// want to overwrite work done in the constructor. But if we 
+                    /// are using a default (empty) constructor then all Serializable fields and 
+                    /// properties should be set.
+                    /// class(...)  => DO NOT fill public: set, init, or fields
+                    /// class()     => fill public: set, init, fields
+                    /// struct...   => same as class, EXCEPT that the default constructor may not exist, this it is handled outside the loop below
+
+                    if (c.GetParameters().Length > 0) return @out;
+
+                    @out = FillPropertiesFromToml(@out, tt, t);
+
+                    @out = FillFieldsFromToml(@out, tt, t);
+
+                    return @out;
+                }
                 catch (Exception e)
                 {
                     exs.Add(new InvalidOperationException($"Construction with {c} failed -> {e.Message}"));
                 }
+            }
+            if(t.IsValueType)
+            {
+                var @out = FormatterServices.GetSafeUninitializedObject(t);
+                @out = FillPropertiesFromToml(@out, tt, t);
+                @out = FillFieldsFromToml(@out, tt, t);
             }
             throw new AggregateException($"No constructors on type {t} compatible with Toml {tt.GetType()} data found", exs);
         }
@@ -120,6 +147,62 @@ namespace TomlDotNet
                 if (p.IsOptional) return p.DefaultValue;
                 throw new InvalidOperationException($"no element in TOML found to match non-optional {p.Name}");
             }
+        }
+
+        private static object? GetObj(TomlTable tt, PropertyInfo pi)
+        {
+            if (pi.Name is null) throw new ArgumentException($"{nameof(pi)}.name must not be null", nameof(pi));
+            if (tt.ContainsKey(pi.Name))
+            {
+                var value = tt.GetValue(pi.Name);
+                return FromToml(value, pi.PropertyType);
+            }
+            throw new InvalidOperationException($"no element in TOML found to match property {pi.Name}");
+        }
+
+        private static object? GetObj(TomlTable tt, FieldInfo fi)
+        {
+            if (fi.Name is null) throw new ArgumentException($"{nameof(fi)}.name must not be null", nameof(fi));
+            if (tt.ContainsKey(fi.Name))
+            {
+                var value = tt.GetValue(fi.Name);
+                return FromToml(value, fi.FieldType);
+            }
+            throw new InvalidOperationException($"no element in TOML found to match property {fi.Name}");
+        }
+
+        private static object FillFieldsFromToml(object obj, TomlTable tt, Type type)
+        {
+            var @out = obj; // handles ValueTypes
+            var bindingFlags = BindingFlags.Public | BindingFlags.Instance;
+
+            foreach (var f in type.GetFields(bindingFlags))
+            {
+                if (Serialize.IsNonSerialized(f)) continue;
+                var tomlValue = tt.GetValue(f.Name);
+                f.SetValue(@out, GetObj(tt, f));
+            }
+            return obj;
+        }
+
+        //private static object FillPropertiesFromToml(object obj, TomlTable tt, Type type, bool skipInit)
+        private static object FillPropertiesFromToml(object obj, TomlTable tt, Type type)
+        {
+            var @out = obj; // handles ValueTypes
+            var bindingFlags = BindingFlags.Public | BindingFlags.Instance;
+
+            foreach (var p in type.GetProperties(bindingFlags))
+            {                
+                if (Serialize.IsNonSerialized(type, p)) continue;
+                var (publicSet, _) = Serialize.CanSet(p);
+                // TODO: for records, this is probaly re-setting many properties that were already in the constructor. THis isnt a problem unlss the ocnstructor modified them                
+                if (!publicSet) continue;
+                //if (isInitOnly && skipInit) continue;
+                //var tomlValue = tt.GetValue(p.Name);
+                //var value = FromToml(tomlValue, p.PropertyType);
+                p.SetValue(@out, GetObj(tt,p));
+            }
+            return obj;
         }
 
         /// <summary>
