@@ -338,5 +338,20 @@ namespace TomlDotNet.Tests
             throw new Exception("Should have thrown");
         }
 
+        [TestMethod]
+        public void InlineTable()
+        {
+            string fname = "InlineTable.toml";
+            var t = Deserialize.FromFile<ContainsVec2>(fname); // is OK
+            ;
+        }
+
+        public class Vec2
+        {
+            public double X;
+            public double Y;
+            public Vec2(double x, double y) { X = x; Y = y; }
+        }
+        public record ContainsVec2(Vec2 V);
     }
 }

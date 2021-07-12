@@ -35,6 +35,7 @@ namespace TomlDotNet
             BuiltInConversions.Add((typeof(DateTime), typeof(object)), o => o);
             BuiltInConversions.Add((typeof(DateTimeOffset), typeof(object)), o => o);
 
+            AddNumericConversions();
         }
 
         public static void AddNumericConversions()
@@ -82,16 +83,16 @@ namespace TomlDotNet
         private static object FromToml(TomlTable tt, Type t)
         {
             List<Exception> exs = new();
-            foreach(var c in ConstructorTryOrder(t,tt))
+            foreach (var c in ConstructorTryOrder(t, tt))
             {
                 try
                 { return FromToml(tt, t, c); }
-                catch (Exception e) 
-                { 
-                    exs.Add( new InvalidOperationException($"Construction with {c} failed -> {e.Message}")); 
+                catch (Exception e)
+                {
+                    exs.Add(new InvalidOperationException($"Construction with {c} failed -> {e.Message}"));
                 }
             }
-            throw new AggregateException("No constructors compatible with Toml data found", exs);
+            throw new AggregateException($"No constructors on type {t} compatible with Toml {tt.GetType()} data found", exs);
         }
 
         public static object FromToml(TomlTable tt, Type t, ConstructorInfo c)
@@ -108,8 +109,8 @@ namespace TomlDotNet
 
         private static object? GetObj(TomlTable tt, ParameterInfo p)
         {
-            if(p.Name is null) throw new ArgumentException($"{nameof(p)}.name must not be null", nameof(p));
-            if( tt.ContainsKey(p.Name))
+            if (p.Name is null) throw new ArgumentException($"{nameof(p)}.name must not be null", nameof(p));
+            if (tt.ContainsKey(p.Name))
             {
                 var value = tt.GetValue(p.Name);
                 return FromToml(value, p.ParameterType);
@@ -131,10 +132,10 @@ namespace TomlDotNet
             => from switch
             {
                 null => throw new ArgumentNullException(nameof(from)),
-                TomlArray a => BuildFromArray(a,toType),
+                TomlArray a => BuildFromArray(a, toType),
                 TomlTable t => FromToml(t, toType),
                 // special case for parsing string to enums
-                TomlString s when toType.IsEnum => 
+                TomlString s when toType.IsEnum =>
                     Enum.TryParse(toType, s.Value, out object? o) switch
                     {
                         true => o!,
@@ -160,7 +161,7 @@ namespace TomlDotNet
             TomlBoolean b => b.Value,
             TomlDouble d => d.Value,
             TomlLocalDateTime ldt => ldt.Value,
-            TomlOffsetDateTime odt => odt.Value,            
+            TomlOffsetDateTime odt => odt.Value,
             _ => throw new InvalidOperationException("Only defined for single-value types"),
         };
 
@@ -179,8 +180,19 @@ namespace TomlDotNet
             /// 3) attempt to construct object using the parameter list
             /// 4) use this list as an arg to the constructor from 1) above
 
+            /// case:
+            ///     toType is Ienum
+            var elementType = IsIEnumerable(toType);
+            if (elementType is not null)
+            {
+                return ToListOfConcreteType(elementType, fromToml);
+            }
+
+            /// case:
+            ///     ToType is a type with a constructor that might contain a single Iennumerable<T> paramter
+            ///     so construct a list<T>
             var possibles = PossibleConstructors(toType);
-            foreach( var (constructor, eleType) in possibles)
+            foreach (var (constructor, eleType) in possibles)
             {
                 // try to asemble arg list, if it throws, try next
                 try
@@ -201,8 +213,9 @@ namespace TomlDotNet
                 catch { }
             }
 
-
-            foreach(var (converter, eleType) in PossibleConverters(toType))
+            /// Case:  toType does not have a matchign constrcutor, but there is a funciton that 
+            /// can convert from an IEnumerable[T] to that type in the list of conversions
+            foreach (var (converter, eleType) in PossibleConverters(toType))
             {
                 try
                 {
@@ -222,22 +235,34 @@ namespace TomlDotNet
                 }
                 catch { }
             }
-            // now try a converter
-            //var f = ConvertFromEnumerable(toType, elementType);
-            //if (f is not null) return f(prm);
 
             throw new InvalidOperationException($"No constructor on type {toType} with 1 Enumerable<T> parameter, and no Conveter from IEnnumerable <T> found");
-            /// converter way
-            //var conv = ConvertFromEnumerable(toType);
+
+            static object ToListOfConcreteType(Type elementType, TomlArray array)
+            {
+                var listType = typeof(List<>);
+                var constructedListType = listType.MakeGenericType(elementType);
+                IEnumerable<object> prm = from el in array select FromToml(el, elementType);
+                var instance = (System.Collections.IList)Activator.CreateInstance(constructedListType)!;
+                if (instance is null) throw new InvalidOperationException($"Failed to construct List<{elementType}>  from Tomlarray");
+                foreach (var p in prm)
+                    instance.Add(p); // will throw if instance does not support type of the enumerator
+                return instance;
+            }
         }
 
+        /// <summary>
+        ///  if Type t is an IEnumerable<T> ruturns typeof(T), null otherwise
+        /// </summary>
+        /// <param name="t"></param>
+        /// <returns></returns>
         public static Type? IsIEnumerable(Type t)
             => (t.Name == "IEnumerable`1" && t.GenericTypeArguments.Length == 1) ? t.GenericTypeArguments[0] : null;
 
         private static List<(ConstructorInfo constructor, Type elementType)> PossibleConstructors(Type t)
         {
-            List <(ConstructorInfo constructor, Type elementType)> L = new();
-            foreach(var c in t.GetConstructors())
+            List<(ConstructorInfo constructor, Type elementType)> L = new();
+            foreach (var c in t.GetConstructors())
             {
                 ParameterInfo[] ps = c.GetParameters();
                 if (ps.Length != 1) continue;
@@ -252,7 +277,7 @@ namespace TomlDotNet
         /// </summary>
         /// <param name="toType"></param>
         /// <returns></returns>
-        private static List<(Func<object,object> converter, Type elementType)> PossibleConverters(Type toType)
+        private static List<(Func<object, object> converter, Type elementType)> PossibleConverters(Type toType)
         {
             List<(Func<object, object> converter, Type elementType)> @out = new();
             foreach (var (key, value) in Conversions)
@@ -260,7 +285,7 @@ namespace TomlDotNet
                 if (!toType.IsAssignableFrom(key.to)) continue;
                 var eleType = IsIEnumerable(key.from);
                 if (eleType is null) continue;
-                @out.Add((converter:value, elementType:eleType));
+                @out.Add((converter: value, elementType: eleType));
             }
             return @out;
         }
@@ -277,7 +302,7 @@ namespace TomlDotNet
             var cs = t.GetConstructors(BindingFlags.Public | BindingFlags.Instance).ToList();
             // sort on # params
             cs.Sort((c1, c2) => c2.GetParameters().Length.CompareTo(c1.GetParameters().Length));
-            if (tt is null) return cs;            
+            if (tt is null) return cs;
             // next line filter constructors with more required params than keys in the tomltable
             //     this is just a performance enhancement really, so tt is optional
             var l = (from c in cs where NumberRequiredParams(c) <= tt.Keys.Count select c).ToList();
