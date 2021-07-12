@@ -276,7 +276,7 @@ namespace TomlDotNet
         {
             var cs = t.GetConstructors(BindingFlags.Public | BindingFlags.Instance).ToList();
             // sort on # params
-            cs.Sort((c1, c2) => c1.GetParameters().Length.CompareTo(c2.GetParameters().Length));
+            cs.Sort((c1, c2) => c2.GetParameters().Length.CompareTo(c1.GetParameters().Length));
             if (tt is null) return cs;            
             // next line filter constructors with more required params than keys in the tomltable
             //     this is just a performance enhancement really, so tt is optional
