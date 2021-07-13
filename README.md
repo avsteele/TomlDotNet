@@ -1,6 +1,9 @@
 # TomlDotNet
 
-Simple serialization of C# records to TOML and the reverse. Uses TOMLET (https://github.com/SamboyCoding/Tomlet) to parse TOML.
+Simple serialization of C# types to TOML and the reverse.
+
+Uses TOMLET (https://github.com/SamboyCoding/Tomlet) as a dependency to 
+parse TOML.  However, no TOMLET types 
 
 WARNING: this works, but is a work-in-progress. The API may change at any time.
 
@@ -26,12 +29,32 @@ var dIn = TomlDotNet.Deserialize.FromFile<Data>("Example.toml");
 Assert.IsTrue((dIn.L == 5) && (dIn.D == 0.123) && (dIn.S=="hello") && (dIn.B == true));
 ```
 
+#### Method
+
+The library will attempt to construct an object with one of its public contructors, using 
+the TOML to fill the constructor parameters. The paramters can in turn be recursively constructed
+using sub-tables in the TOML.
+
+If successful, the constructed object is returned.  
+
+If only a parameterles constructor can be used, then the public set-or-init properties and 
+public fields will be set using the TOML.
+
+This method should work well for classes, structs and records.
+
+Cosntructor parameters, properties, fields implementing `IEnumberable<T>` will match with any TOML homgeneous array.
+`IEnumerable<object>` can be used to match hetergenous TOML arrays.
+
 ### Serialization
 
-All properties public with  public `set` or `init` are serialized, unless the property has the `[field:NonSerialized]` attribute applied.
+All properties public with  public `set` or `init` are serialized, unless the 
+property has the `[field:NonSerialized]` attribute applied.
 
 Public Fields are serialized, unless the field has the `[NonSerialized]` attribute.
 
+In the case of `record`s the public property names match the constructor 
+parameter names by default. So Serialization followed by deserialization should 
+always proceed via the constructor.
 
 ### Support for conversions
 
@@ -47,8 +70,10 @@ D = 12.34
 F = 45.67
 ```
 
-```csharp
+TOML integers map to c# longs. Conversions to other integral types can be 
+supported via adding conversions.
 
+```csharp
 public record Conv(long L, int I, uint UI, ulong UL, double LtoD, float LtoF, double D, float F);
 //...
 import TomlDotNet;
@@ -70,6 +95,11 @@ Deserialize.Conversions.Add((typeof(double), typeof(float)), (d) => Convert.ToSi
 var cOut = TomlDotNet.Deserialize.FromFile<Conv>("Conversions.toml"); 
 ```
 
+These and other numeric conversions can simply be included with a call to `Deserialize.AddNumericConversions()`
+
+Conversion from many TOML type can be handled by adding converters. 
+Constrctors for an object are alwasy checked first.
+
 ### Optional Fields
 
 ```TOML
@@ -90,9 +120,15 @@ Many additional examples of usage can be found in the included test package (`To
 
 ## Methods / Why
 
-C# Records map quite well to TOML data. By using the the TOML data to populate the parameters of a constructor we can ensure a well constructed object. 
+C# `record`s map nicely to TOML data. By using the the TOML data to populate
+the parameters of a constructor we can ensure a well constructed object.
 
-One key improvement in this method is that we  can deserialize without exposing public fields or properties of our objects. The default immutability of records is also a good fit for representation of on-disk toml data.
+Wile support fo records was a motivation, the library shoudl work fine with 
+`class`es and `struct` as well
+
+One key improvement in this method is that we can deserialize without exposing public fields
+ or properties of our objects. The default immutability of records is also a good fit for 
+ representation of on-disk toml data.
 
 Serialization is less straightforward, but if you use default-constructed records
 
@@ -106,6 +142,6 @@ Serialization is less straightforward, but if you use default-constructed record
 - [X] Constructor selection
 - [X] Optional paramters for deserialization, optional TOML
 - [X] Array of Tables support
-- [ ] Inline Array of tables support
 - [X] De-serialization from Toml Tables to any type with an `IEnumerable` constructor or converter ass to the dictionary
-- [ ] Serialization from IEnnumerbale object to a TomlArray
+- [X] Serialization from IEnnumerbale object to a TomlArray
+- [ ] Inline Array of tables support

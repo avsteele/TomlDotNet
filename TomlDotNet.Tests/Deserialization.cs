@@ -358,9 +358,17 @@ namespace TomlDotNet.Tests
             tt.Put("X", cIn.X);
             tt.Put("Y", cIn.Y);
             tt.Put("Z", cIn.Z);
-
+            // this shoul duse the valuetype default constructor, then fill its fields from the toml
             var cOut = Deserialize.FromToml<System.Numerics.Vector3>(tt);
             Assert.IsTrue(cIn == cOut);
+
+            TomlTable tt2 = new();
+            tt2.Put("x", cIn.X);
+            tt2.Put("y", cIn.Y);
+            tt2.Put("z", cIn.Z);
+            // this one should use the constructor
+            var cOut2 = Deserialize.FromToml<System.Numerics.Vector3>(tt2);
+            Assert.IsTrue( cIn == cOut2);
         }
 
         public record ContainsVec2(System.Numerics.Vector2 V);

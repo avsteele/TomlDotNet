@@ -88,7 +88,10 @@ namespace TomlDotNet
             {
                 try
                 { 
-                    var @out = FromToml(tt, t, c);
+                    var @out = ConstructFromToml(tt, t, c);
+
+                    /// If have constructed the object with a ctor other than the defualt, we are finished
+                    if (c.GetParameters().Length > 0) return @out;
 
                     /// logic is that a properly constructed object 
                     /// does not necessarily require its properties to be initialized, 
@@ -99,8 +102,6 @@ namespace TomlDotNet
                     /// class(...)  => DO NOT fill public: set, init, or fields
                     /// class()     => fill public: set, init, fields
                     /// struct...   => same as class, EXCEPT that the default constructor may not exist, this it is handled outside the loop below
-
-                    if (c.GetParameters().Length > 0) return @out;
 
                     @out = FillPropertiesFromToml(@out, tt, t);
 
@@ -118,11 +119,14 @@ namespace TomlDotNet
                 var @out = FormatterServices.GetSafeUninitializedObject(t);
                 @out = FillPropertiesFromToml(@out, tt, t);
                 @out = FillFieldsFromToml(@out, tt, t);
+                return @out;
             }
+            /// Only throw if all ctors with parmaeters failed, or we use the default 
+            /// ctor and had a failure to fill all the public properties and fields
             throw new AggregateException($"No constructors on type {t} compatible with Toml {tt.GetType()} data found", exs);
         }
 
-        public static object FromToml(TomlTable tt, Type t, ConstructorInfo c)
+        public static object ConstructFromToml(TomlTable tt, Type t, ConstructorInfo c)
         {
             var param_list = c.GetParameters();
 
