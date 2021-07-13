@@ -103,11 +103,19 @@ namespace TomlDotNet
 
         public static bool IsNonSerializedBase(Type t, object p)
         {
-            if (p is not ParameterInfo pi && p is not PropertyInfo) throw new ArgumentException(nameof(p), "Must be PropertyInfo for ParameterInfo");
+            if (p is not ParameterInfo pi && p is not PropertyInfo) throw new ArgumentException(nameof(p), "Must be PropertyInfo or ParameterInfo");
             string name = (p as ParameterInfo)?.Name ?? (p as MemberInfo)?.Name!;
             string fieldName = $"<{name}>k__BackingField";
-            var f = t.GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Instance);
-            if (f is null) throw new InvalidOperationException($"Field {name} on type {t} not found");
+            /// might need ot search base clases one by one since 
+            /// non-pubic field are not able to be obtianed any other way
+            FieldInfo? f = null;
+            Type? currentType = t;
+            while (f is null)
+            {
+                f = currentType.GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Instance);
+                if (f is null) currentType = currentType.BaseType;
+                if (currentType is null) throw new InvalidOperationException($"Field {name} on type {t} (or its bases) not found");
+            }
             // get the backing field
             return IsNonSerialized(f);
         }

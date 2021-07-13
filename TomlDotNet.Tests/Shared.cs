@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Reflection;
+using System.Runtime.Serialization;
+using System.Runtime.CompilerServices;
 
 #pragma warning disable IDE0060 // Remove unused parameter
 /// <summary>
@@ -73,5 +76,18 @@ namespace TomlDotNet.Tests
             };
         }
         private Vector2() { }
+    }
+
+    public class Derived : Base
+    {
+        public double A { get; set; } = 5;
+    };
+
+    public class Base
+    {
+        public double B { get; set; } = 6;
+
+        [field: NonSerialized]
+        public double C { get; set; } = 7;
     }
 }

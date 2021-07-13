@@ -155,9 +155,27 @@ namespace TomlDotNet.Tests
             var s = Serialize.ToToml(new System.Numerics.Vector2(3f,6f));
             Console.WriteLine(s);
 
-            var s2 = Serialize.ToToml(new TestField());
-            Console.WriteLine(s2); // look correct
+
+            // that field labeld NonSerialized are not serialized
+            var data = new TestField() { A = 99 };
+            var s2 = Serialize.ToToml(data);
+
+            Console.WriteLine(s2); // looks correct
             Serialize.ToToml(new TestField(), fileName);
+
+            var sOut = Deserialize.FromString<TestField>(s2);
+            Assert.IsTrue(sOut.A == 4); // not 99
+            ;
         }
+
+        [TestMethod]
+        public void Inheritance()
+        {
+            var data = new Derived() { C = 99 };
+            var str = Serialize.ToToml(data);
+            var dataOut = Deserialize.FromString<Derived>(str);
+            Assert.IsTrue(dataOut.C == 7); // not 99
+        }
+
     }
 }
