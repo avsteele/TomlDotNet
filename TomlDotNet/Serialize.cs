@@ -18,9 +18,9 @@ namespace TomlDotNet
         /// <typeparam name="T"></typeparam>
         /// <param name="data"></param>
         /// <param name="filename"></param>
-        public static void ToToml<T>(T data, string filename) where T : notnull
+        public static void ToFile<T>(T data, string filename) where T : notnull
         {
-            var str = ToToml(data);
+            var str = ToString(data);
             System.IO.File.WriteAllText(filename, str);
         }
 
@@ -35,7 +35,7 @@ namespace TomlDotNet
         /// <typeparam name="T"></typeparam>
         /// <param name="data"></param>
         /// <returns></returns>
-        public static string ToToml<T>(T data) where T : notnull
+        public static string ToString<T>(T data) where T : notnull
         {
             var table = ToToml(data as object);
             return table.SerializeNonInlineTable(null, false);

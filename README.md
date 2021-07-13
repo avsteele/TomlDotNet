@@ -47,6 +47,15 @@ Cosntructor parameters, properties, fields implementing `IEnumberable<T>` will m
 
 ### Serialization
 
+```csharp
+public record Data(long L, double D, string S, bool B);
+
+// ...
+var data = new Data(1L, 2.2, "hi", true);
+string str = TomlDotNet.Serialize.ToString(data);
+// or can use ToFile(data, fileName)
+```
+
 All properties public with  public `set` or `init` are serialized, unless the 
 property has the `[field:NonSerialized]` attribute applied.
 

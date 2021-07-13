@@ -18,7 +18,7 @@ namespace TomlDotNet.Tests
         {
             var dIn = new Data(5, 6.6, "hi", true);
 
-            var s = Serialize.ToToml(dIn);
+            var s = Serialize.ToString(dIn);
             var filename = @"serializeBasic.toml";
             System.IO.File.WriteAllText(filename, s);
 
@@ -32,7 +32,7 @@ namespace TomlDotNet.Tests
         {
             Exclusion dIn = new(5L, true, "hi");
             var filename = @"Exclusion.toml";
-            Serialize.ToToml(dIn, filename);
+            Serialize.ToFile(dIn, filename);
 
             // shoudl throw
             try
@@ -51,7 +51,7 @@ namespace TomlDotNet.Tests
         public void Nested()
         {
             Nested dIn = new(new(5L));
-            var s = Serialize.ToToml(dIn);
+            var s = Serialize.ToString(dIn);
             var filename = @"serializeNested.toml";
             System.IO.File.WriteAllText(filename, s);
             var dOut = Deserialize.FromFile<Nested>(filename);
@@ -63,7 +63,7 @@ namespace TomlDotNet.Tests
         public void BasicAll()
         {
             Many dIn = new(5L, 6, 7, 8, 9, 255, 12.12, 15.12F, "hello", true);
-            var s = Serialize.ToToml(dIn);
+            var s = Serialize.ToString(dIn);
             var filename = @"serializeMany.toml";
             System.IO.File.WriteAllText(filename, s);
 
@@ -81,7 +81,7 @@ namespace TomlDotNet.Tests
         {
             HomoArray dIn = new(new() { 5L, 6L, 7L }, new() { true, false, true }, new() { 8, 9, 10 });
             var filename = @"serializeArray.toml";
-            Serialize.ToToml(dIn, filename);
+            Serialize.ToFile(dIn, filename);
 
             var dOut = Deserialize.FromFile<HomoArray>(filename);// fails, writes empty tables insytead of arrays
             Assert.IsTrue(dIn.L[1] == dOut.L[1]);
@@ -93,7 +93,7 @@ namespace TomlDotNet.Tests
         {
             ArrayOfTables dIn = new(new() { new(5, true), new(6, false), new(7, true) });
             var fileName = @"SerializeArrayofTables.toml";
-            Serialize.ToToml(dIn, fileName);
+            Serialize.ToFile(dIn, fileName);
 
             var dOut = Deserialize.FromFile<ArrayOfTables>(fileName);
             Assert.IsTrue(Deserialization.Same(dIn.A, dOut.A));
@@ -108,7 +108,7 @@ namespace TomlDotNet.Tests
                 new(6, true, "hi2", 8.8, new() { 4.1, 5.2, 6.3 }) 
             });
             var fileName = @"SerializeArrayofTables2.toml";
-            Serialize.ToToml(dIn, fileName);
+            Serialize.ToFile(dIn, fileName);
 
             var dOut = Deserialize.FromFile<ArrayOfTables2>(fileName);
             // TODO: missing check for correctness
@@ -129,7 +129,7 @@ namespace TomlDotNet.Tests
             var fileName = @"SerializeValueType.toml";
             var tp = new TestProp() { X = 5, Z = 8 };
 
-            Serialize.ToToml(tp, fileName);
+            Serialize.ToFile(tp, fileName);
             //var tpIn = Deserialize.FromFile<TestProp>(fileName);
             //Console.WriteLine(s);
         }
@@ -152,16 +152,16 @@ namespace TomlDotNet.Tests
         public void Field()
         {
             var fileName = @"SerializeField.toml";
-            var s = Serialize.ToToml(new System.Numerics.Vector2(3f,6f));
+            var s = Serialize.ToString(new System.Numerics.Vector2(3f,6f));
             Console.WriteLine(s);
 
 
             // that field labeld NonSerialized are not serialized
             var data = new TestField() { A = 99 };
-            var s2 = Serialize.ToToml(data);
+            var s2 = Serialize.ToString(data);
 
             Console.WriteLine(s2); // looks correct
-            Serialize.ToToml(new TestField(), fileName);
+            Serialize.ToFile(new TestField(), fileName);
 
             var sOut = Deserialize.FromString<TestField>(s2);
             Assert.IsTrue(sOut.A == 4); // not 99
@@ -172,7 +172,7 @@ namespace TomlDotNet.Tests
         public void Inheritance()
         {
             var data = new Derived() { C = 99 };
-            var str = Serialize.ToToml(data);
+            var str = Serialize.ToString(data);
             var dataOut = Deserialize.FromString<Derived>(str);
             Assert.IsTrue(dataOut.C == 7); // not 99
         }
