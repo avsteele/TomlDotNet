@@ -4,6 +4,7 @@ using System.Linq;
 using Tomlet.Models;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
+using System.Globalization;
 
 
 namespace TomlDotNet
@@ -37,6 +38,15 @@ namespace TomlDotNet
             BuiltInConversions.Add((typeof(DateTimeOffset), typeof(object)), o => o);
 
             AddNumericConversions();
+            AddAuxilliaryConversions();
+        }
+
+        public static void AddAuxilliaryConversions()
+        {
+            // allow parsing of string to timespans
+            Conversions.Add(
+                (from: typeof(string), to: typeof(TimeSpan)), 
+                (str_obj) => TimeSpan.Parse((string)str_obj, CultureInfo.InvariantCulture));
         }
 
         public static void AddNumericConversions()
@@ -87,7 +97,7 @@ namespace TomlDotNet
             foreach (var c in ConstructorTryOrder(t, tt))
             {
                 try
-                { 
+                {
                     var @out = ConstructFromToml(tt, t, c);
 
                     /// If have constructed the object with a ctor other than the defualt, we are finished
@@ -114,7 +124,7 @@ namespace TomlDotNet
                     exs.Add(new InvalidOperationException($"Construction with {c} failed -> {e.Message}"));
                 }
             }
-            if(t.IsValueType)
+            if (t.IsValueType)
             {
                 var @out = FormatterServices.GetSafeUninitializedObject(t);
                 @out = FillPropertiesFromToml(@out, tt, t);
@@ -196,7 +206,7 @@ namespace TomlDotNet
             var bindingFlags = BindingFlags.Public | BindingFlags.Instance;
 
             foreach (var p in type.GetProperties(bindingFlags))
-            {                
+            {
                 if (Serialize.IsNonSerialized(type, p)) continue;
                 var (publicSet, _) = Serialize.CanSet(p);
                 // TODO: for records, this is probaly re-setting many properties that were already in the constructor. THis isnt a problem unlss the ocnstructor modified them                
@@ -204,7 +214,7 @@ namespace TomlDotNet
                 //if (isInitOnly && skipInit) continue;
                 //var tomlValue = tt.GetValue(p.Name);
                 //var value = FromToml(tomlValue, p.PropertyType);
-                p.SetValue(@out, GetObj(tt,p));
+                p.SetValue(@out, GetObj(tt, p));
             }
             return obj;
         }
@@ -310,17 +320,22 @@ namespace TomlDotNet
                     // for heterog this might be 'object'. Will also throw if the class has no generic type arg
                     //var elementType = toType.GenericTypeArguments[0];
                     var constructedListType = listType.MakeGenericType(eleType);
-
-                    IEnumerable<object> prm = from el in fromToml select FromToml(el, eleType);
-
                     var instance = (System.Collections.IList)Activator.CreateInstance(constructedListType)!;
                     if (instance is null) throw new InvalidOperationException($"Failed to construct List<{eleType}> to construct {toType}");
-                    foreach (var p in prm)
+
+                    //IEnumerable<object> prm = from el in fromToml select FromToml(el, eleType);
+                    foreach (TomlValue el in fromToml)
+                    {
+                        object p = FromToml(el, eleType);
                         instance.Add(p); // will throw if instance does not support type of the enumerator
+                    }
 
                     return converter(instance);
                 }
-                catch { }
+                catch (AggregateException ex)
+                {
+                    throw ex.InnerException ?? ex; // makes error clearer usually
+                }
             }
 
             throw new InvalidOperationException($"No constructor on type {toType} with 1 Enumerable<T> parameter, and no Conveter from IEnnumerable <T> found");

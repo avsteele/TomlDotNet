@@ -45,7 +45,7 @@ namespace TomlDotNet.Tests
 #pragma warning disable IDE0051 // Remove unused private members
         private ManyConstructors(int z, int y, int x) { } //should be filtered (is private)
 #pragma warning restore IDE0051 // Remove unused private members
-        public ManyConstructors(int i, int j, int k, int l, int m, int n, int o, int p, int q) { } //should be filtered, # req params to large
+        public ManyConstructors(int i, int j, int k, int l, int m, int n, int o, int p, int q) { } //should be filtered, # req params too large
         public ManyConstructors(int i) { }
         public ManyConstructors(int i, string s) { }
         public ManyConstructors(int i = 5, int j = 10, int k = 15, int l = 20, int m = 25) { }

@@ -39,7 +39,7 @@ namespace TomlDotNet
         {
             var table = ToToml(data as object);
             return table.SerializeNonInlineTable(null, false);
-        }        
+        }
 
         private static TomlTable ToToml(object data)
         {
@@ -61,7 +61,7 @@ namespace TomlDotNet
                 tt.PutValue(p.Name, tomlValue);
             }
 
-            foreach(var f in type.GetFields(bindingFlags))
+            foreach (var f in type.GetFields(bindingFlags))
             {
                 if (f.IsNotSerialized) continue;
                 object? obj = f.GetValue(data);
@@ -128,7 +128,11 @@ namespace TomlDotNet
             string s => new TomlString(s),
             DateTime dt => new TomlLocalDateTime(dt),
             DateTimeOffset dto => new TomlOffsetDateTime(dto),
-            IEnumerable e => MakeTomlArray(e),
+            IEnumerable e => e.GetType().GenericTypeArguments.Length switch
+            {
+                >= 1 => MakeTomlArray(e),
+                < 1 => ToToml(data),
+            },
             _ => ToToml(data)
         };
 
@@ -138,10 +142,12 @@ namespace TomlDotNet
         /// <param name="e"></param>
         /// <param name="targetType">use only in the case that we have an array of records</param>
         /// <returns></returns>
-        private static TomlArray MakeTomlArray(IEnumerable e)
+        private static TomlValue MakeTomlArray(IEnumerable e)
         {
-            if (e.GetType().GenericTypeArguments.Length == 0) 
-                throw new InvalidOperationException("Unable to convert IEnumerable to tomlarray, missing generic type");
+            if (e.GetType().GenericTypeArguments.Length == 0)
+            {
+                throw new InvalidOperationException("Unable to convert IEnumerable to tomlarray, missing generic type.");
+            }
 
             var listType = typeof(List<>);
             var elementType = e.GetType().GenericTypeArguments[0]; // for heterog this might be 'object'
@@ -149,13 +155,13 @@ namespace TomlDotNet
 
             List<TomlValue> tomlValues = (from object el in e select ToTomlBase(el, elementType)).ToList();
             var a = new TomlArray();
-            
+
             var p = typeof(TomlArray).GetField("ArrayValues");
             p?.SetValue(a, tomlValues);  // jenky, but I can't find any other way to corectly construct a TomlArray
 
-            if(tomlValues.Count>0 && tomlValues[0] is TomlTable)
+            if (tomlValues.Count > 0 && tomlValues[0] is TomlTable)
             {
-                var pIsTable = typeof(TomlArray).GetField("IsTableArray", BindingFlags.NonPublic| BindingFlags.Instance);
+                var pIsTable = typeof(TomlArray).GetField("IsTableArray", BindingFlags.NonPublic | BindingFlags.Instance);
                 pIsTable?.SetValue(a, true);
             }
 

@@ -3,7 +3,7 @@
 Simple serialization of C# types to TOML and the reverse.
 
 Uses TOMLET (https://github.com/SamboyCoding/Tomlet) as a dependency to 
-parse TOML.  However, no TOMLET types 
+parse TOML.  However, no TOMLET types are actually exposed.
 
 WARNING: this works, but is a work-in-progress. The API may change at any time.
 
@@ -17,17 +17,21 @@ L = 5		# toml long
 D = 0.123	# toml double
 S = "hello"	# toml string
 B = true	# toml bool
+E = "Yes"   # toml string to enum
 ```
 
 ```csharp
-public record Data(long L, double D, string S, bool B);
+public enum EnumType { Yes, No, Maybe };
+public record Data(long L, double D, string S, bool B, EnumType E);
 
 // ...
 
 var dIn = TomlDotNet.Deserialize.FromFile<Data>("Example.toml");
 
-Assert.IsTrue((dIn.L == 5) && (dIn.D == 0.123) && (dIn.S=="hello") && (dIn.B == true));
+Assert.IsTrue((dIn.L == 5) && (dIn.D == 0.123) && (dIn.S=="hello") && (dIn.B == true) && (dIn.E == EnumType.Yes);
 ```
+
+COnversions from a 
 
 #### Method
 
@@ -132,7 +136,7 @@ Many additional examples of usage can be found in the included test package (`To
 C# `record`s map nicely to TOML data. By using the the TOML data to populate
 the parameters of a constructor we can ensure a well constructed object.
 
-Wile support fo records was a motivation, the library shoudl work fine with 
+Wile support for records was a motivation, the library should work fine with 
 `class`es and `struct` as well
 
 One key improvement in this method is that we can deserialize without exposing public fields
