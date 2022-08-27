@@ -177,5 +177,13 @@ namespace TomlDotNet.Tests
             Assert.IsTrue(dataOut.C == 7); // not 99
         }
 
+        [TestMethod]
+        public void Enum()
+        {
+            var data = new EnumTypes(Test.Yes,Test.No, Test.Maybe);
+            var str = Serialize.ToString(data);
+            var dataOut = Deserialize.FromString<EnumTypes>(str);
+            Assert.IsTrue(data == dataOut); // not 99
+        }
     }
 }

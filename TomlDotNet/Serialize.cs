@@ -126,6 +126,7 @@ namespace TomlDotNet
             double _ or float _ => new TomlDouble(Convert.ToDouble(data)),
             long _ or int _ or uint _ or short _ or ushort _ or byte _ => new TomlLong(Convert.ToInt64(data)),
             string s => new TomlString(s),
+            Enum e => new TomlString(e.ToString()),
             DateTime dt => new TomlLocalDateTime(dt),
             DateTimeOffset dto => new TomlOffsetDateTime(dto),
             IEnumerable e => e.GetType().GenericTypeArguments.Length switch
